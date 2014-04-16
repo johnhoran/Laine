@@ -1,53 +1,117 @@
-
+const Lang = imports.lang;
 const St = imports.gi.St;
+const Gvc = imports.gi.Gvc;
+const Clutter = imports.gi.Clutter;
+
 const Main = imports.ui.main;
 const Tweener = imports.ui.tweener;
+const PanelMenu = imports.ui.panelMenu;
+const PopupMenu = imports.ui.popupMenu;
 
-let text, button;
 
-function _hideHello() {
-    Main.uiGroup.remove_actor(text);
-    text = null;
+let _mixerControl;
+function getMixerControl(){
+  if(_mixerControl) return _mixerControl;
+
+  _mixerControl = new Gvc.MixerControl({ name: 'Laine Volume Control' });
+  _mixerControl.open();
+  return _mixerControl;
 }
 
-function _showHello() {
-    if (!text) {
-        text = new St.Label({ style_class: 'helloworld-label', text: "Hello, world!" });
-        Main.uiGroup.add_actor(text);
+const Laine = new Lang.Class({
+  Name: 'Laine',
+  Extends: PanelMenu.Button,
+
+  _init: function(){
+    this.parent(0.0);
+
+    this._mixerControl = getMixerControl();
+    this._icon = new St.Icon({ icon_name: 'system-run-symbolic', style_class: 'system-status-icon' });
+    this._mainMenu = new MainMenu(this._mixerControl);
+
+    let hbox = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
+    hbox.add_child(this._icon);
+
+
+    this.actor.add_child(hbox);
+    this.menu.addMenuItem(this._mainMenu);
+
+    return 0;
+  }
+});
+
+const MainMenu = new Lang.Class({
+  Name: 'VolumeMenu',
+  Extends: PopupMenu.PopupMenuSection,
+
+  _init: function(control) {
+    this.parent();
+
+    let sourceMenu = new SourceMenu(control);
+    this.addMenuItem(sourceMenu);
+  }
+});
+
+const SourceMenu = new Lang.Class({
+  Name: 'SourceMenu',
+  Extends: PopupMenu.PopupMenuSection,
+
+  _init: function(control) {
+    this.parent();
+    this._sources = {};
+
+    let test = new PopupMenu.PopupMenuItem(_("TEST"));
+
+    this.addMenuItem(test);
+    control.connect('stream_added', Lang.bind(this, this._addSource));
+    control.connect('stream_removed', Lang.bind(this, this._removeSource));
+
+  },
+
+  _addSource: function(control, src){
+    let stream = control.lookup_stream_id(src);
+    if(stream instanceof Gvc.MixerSinkInput){
+      let newEntry = new SourceApplication(stream);
+      this.addMenuItem(newEntry);
+      this._sources[src] = newEntry;
     }
+  },
 
-    text.opacity = 255;
+  _removeSource: function(control, src){
+    if(src in this._sources){
+      this._sources[src].destroy();
+      delete this._sources[src];
+    }
+  }
+});
 
-    let monitor = Main.layoutManager.primaryMonitor;
+const SourceApplication = new Lang.Class({
+  Name: 'SourceApplication',
+  Extends: PopupMenu.PopupMenuSection,
 
-    text.set_position(Math.floor(monitor.width / 2 - text.width / 2),
-                      Math.floor(monitor.height / 2 - text.height / 2));
+  _init: function(src){
+    this.parent();
 
-    Tweener.addTween(text,
-                     { opacity: 0,
-                       time: 2,
-                       transition: 'easeOutQuad',
-                       onComplete: _hideHello });
+    let icon = new St.Icon();
+    icon.set_gicon(src.get_gicon());
+    this.actor.add(icon);
+    this.addMenuItem(new PopupMenu.PopupMenuItem(_(src.get_name())));
+
+    //log('addSrc');
+    //log(src.index);
+
+  }
+});
+
+let _menuButton;
+
+function init(){}
+
+function enable(){
+  _menuButton = new Laine();
+  Main.panel.addToStatusArea('laine', _menuButton);
 }
 
-function init() {
-    button = new St.Bin({ style_class: 'panel-button',
-                          reactive: true,
-                          can_focus: true,
-                          x_fill: true,
-                          y_fill: false,
-                          track_hover: true });
-    let icon = new St.Icon({ icon_name: 'system-run-symbolic',
-                             style_class: 'system-status-icon' });
-
-    button.set_child(icon);
-    button.connect('button-press-event', _showHello);
-}
-
-function enable() {
-    Main.panel._rightBox.insert_child_at_index(button, 0);
-}
-
-function disable() {
-    Main.panel._rightBox.remove_child(button);
+function disable(){
+  _menuButton.destroy();
 }
