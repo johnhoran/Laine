@@ -5,12 +5,15 @@ const Clutter = imports.gi.Clutter;
 const Util = imports.misc.util;
 
 const Main = imports.ui.main;
+const Mainloop = imports.mainloop;
 const Tweener = imports.ui.tweener;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 
 const GLib = imports.gi.GLib;
 const Shell = imports.gi.Shell;
+
+const DECIBEL_UPDATE_INTERVAL = 500;
 
 let _mixerControl;
 function getMixerControl(){
@@ -104,6 +107,13 @@ const SourceApplication = new Lang.Class({
     this.addMenuItem(new PopupMenu.PopupMenuItem(_(src.get_name())));
 
     this.processID = this.getProcessID(src.index);
+    this._timeout = Mainloop.timeout_add(DECIBEL_UPDATE_INTERVAL, Lang.bind(this, this.updateDecibelMeter));
+
+  },
+
+  destroy: function(){
+    Mainloop.source_remove(this._timeout);
+    this.actor.destroy();
   },
 
   getProcessID: function(index) {
@@ -131,20 +141,30 @@ const SourceApplication = new Lang.Class({
 
   switchToApp: function(){
     let windowTracker = Shell.WindowTracker.get_default();
-    let appWindow = windowTracker.get_app_from_pid(this.processID);
-    if(appWindow != null)
-      appWindow.activate();
-    else {
-      //Doesn't have an open window, lets look in the tray.
-      let trayNotifications = Main.messageTray.getSources(); 
-      for(let i = 0; i < trayNotifications.length; i++){
-        log(trayNotifications[i].pid);
+    let app = windowTracker.get_app_from_pid(this.processID);
+
+    if(app == null){
+      //Doesn't have an open window, lets check the tray.
+      let trayNotifications = Main.messageTray.getSources();
+      for(let i = 0; i < trayNotifications.length; i++)
         if(trayNotifications[i].pid == this.processID)
-          trayNotifications[i].app.activate();
-      }
+          app = trayNotifications[i].app;
     }
 
+    if(app == null){
+      //Well isn't this annoying, maybe just launch the application again?
+      //TODO: Figure this out later.
+    }
 
+    if(app != null){
+      app.activate();
+
+    }
+  },
+
+  updateDecibelMeter: function(){
+    log(this.processID+" tick");
+    return true;
   }
 
 
