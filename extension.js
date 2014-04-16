@@ -2,12 +2,14 @@ const Lang = imports.lang;
 const St = imports.gi.St;
 const Gvc = imports.gi.Gvc;
 const Clutter = imports.gi.Clutter;
+const Util = imports.misc.util;
 
 const Main = imports.ui.main;
 const Tweener = imports.ui.tweener;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 
+const GLib = imports.gi.GLib;
 
 let _mixerControl;
 function getMixerControl(){
@@ -97,10 +99,34 @@ const SourceApplication = new Lang.Class({
     this.actor.add(icon);
     this.addMenuItem(new PopupMenu.PopupMenuItem(_(src.get_name())));
 
-    //log('addSrc');
-    //log(src.index);
+    this.processID = getProcessID(src.index);
+    log("TEST "+this.processID);
+  },
 
+  getProcessID: function(index) {
+    let paInfo = GLib.spawn_command_line_sync("pactl list sink-inputs", null, null, null)[1].toString();
+    let paStreams = paInfo.split("Sink Input #");
+    let idStr = index.toString();
+    paInfo = "";
+
+    for(let i = 0; i < paStreams.length; i++){
+      let start = paStreams[i].substr(0, idStr.length);
+      if(idStr == start){
+        paInfo = paStreams[i];
+        break;
+      }
+    }
+
+    let procID = -1;
+    if(paInfo != ""){
+      let patt = new RegExp("application.process.id = \"(\\d*)\"");
+      procID = patt.exec(paInfo)[1];
+    }
+
+    return procID;
   }
+
+  
 });
 
 let _menuButton;
