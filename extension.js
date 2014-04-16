@@ -10,6 +10,7 @@ const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 
 const GLib = imports.gi.GLib;
+const Shell = imports.gi.Shell;
 
 let _mixerControl;
 function getMixerControl(){
@@ -96,11 +97,13 @@ const SourceApplication = new Lang.Class({
 
     let icon = new St.Icon();
     icon.set_gicon(src.get_gicon());
-    this.actor.add(icon);
+    let switchBtn = new St.Button({child: icon});
+    switchBtn.connect('clicked', Lang.bind(this, this.switchToApp));
+    this.actor.add(switchBtn);
+
     this.addMenuItem(new PopupMenu.PopupMenuItem(_(src.get_name())));
 
-    this.processID = getProcessID(src.index);
-    log("TEST "+this.processID);
+    this.processID = this.getProcessID(src.index);
   },
 
   getProcessID: function(index) {
@@ -124,9 +127,27 @@ const SourceApplication = new Lang.Class({
     }
 
     return procID;
+  },
+
+  switchToApp: function(){
+    let windowTracker = Shell.WindowTracker.get_default();
+    let appWindow = windowTracker.get_app_from_pid(this.processID);
+    if(appWindow != null)
+      appWindow.activate();
+    else {
+      //Doesn't have an open window, lets look in the tray.
+      let trayNotifications = Main.messageTray.getSources(); 
+      for(let i = 0; i < trayNotifications.length; i++){
+        log(trayNotifications[i].pid);
+        if(trayNotifications[i].pid == this.processID)
+          trayNotifications[i].app.activate();
+      }
+    }
+
+
   }
 
-  
+
 });
 
 let _menuButton;
