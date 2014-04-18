@@ -13,7 +13,7 @@ const PopupMenu = imports.ui.popupMenu;
 const GLib = imports.gi.GLib;
 const Shell = imports.gi.Shell;
 
-const DECIBEL_UPDATE_INTERVAL = 500;
+const DECIBEL_UPDATE_INTERVAL = 1000;
 
 let _mixerControl;
 function getMixerControl(){
@@ -71,7 +71,7 @@ const SourceMenu = new Lang.Class({
     this.addMenuItem(test);
     control.connect('stream_added', Lang.bind(this, this._addSource));
     control.connect('stream_removed', Lang.bind(this, this._removeSource));
-
+    control.get_pa_context(control);
   },
 
   _addSource: function(control, src){
@@ -97,6 +97,7 @@ const SourceApplication = new Lang.Class({
 
   _init: function(src){
     this.parent();
+    this._source = src;
 
     let icon = new St.Icon();
     icon.set_gicon(src.get_gicon());
@@ -106,8 +107,8 @@ const SourceApplication = new Lang.Class({
 
     this.addMenuItem(new PopupMenu.PopupMenuItem(_(src.get_name())));
 
-    this.processID = this.getProcessID(src.index);
-    this._timeout = Mainloop.timeout_add(DECIBEL_UPDATE_INTERVAL, Lang.bind(this, this.updateDecibelMeter));
+    this.processID = this._getProcessID(src.index);
+   // this._timeout = Mainloop.timeout_add(DECIBEL_UPDATE_INTERVAL, Lang.bind(this, this._updateDecibelMeter));
 
   },
 
@@ -116,7 +117,7 @@ const SourceApplication = new Lang.Class({
     this.actor.destroy();
   },
 
-  getProcessID: function(index) {
+  _getProcessID: function(index) {
     let paInfo = GLib.spawn_command_line_sync("pactl list sink-inputs", null, null, null)[1].toString();
     let paStreams = paInfo.split("Sink Input #");
     let idStr = index.toString();
@@ -162,8 +163,8 @@ const SourceApplication = new Lang.Class({
     }
   },
 
-  updateDecibelMeter: function(){
-    log(this.processID+" tick");
+  _updateDecibelMeter: function(){
+    log(this.processID+" tick " +this._source.get_channel_map().get_volume());
     return true;
   }
 
