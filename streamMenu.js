@@ -80,7 +80,9 @@ const StreamMenu = new Lang.Class({
 	_removeStream: function(conn, sender, object, iface, signal, param, user_data){
 		
 		let streamPath = param.get_child_value(0).unpack();
+		
 		if(streamPath in this._streams){
+
 			this._streams[streamPath].destroy();
 			delete this._streams[streamPath];
 		}
@@ -161,11 +163,11 @@ const SimpleStream = new Lang.Class({
 			this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._volumeEvent), null );
 
 		this._volSlider.connect('value-changed', Lang.bind(this, this._volSliderChanged));
-        this._volSlider.connect('drag-end', Lang.bind(this, this._notifyVolumeChange));
+		this._volSlider.connect('drag-end', Lang.bind(this, this._notifyVolumeChange));
+		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 	},
 
 	isNotable:function(){
-		log("AT:"+this._role);
 		if(this._role == 'event')
 			return false;
 		return true;
@@ -188,7 +190,7 @@ const SimpleStream = new Lang.Class({
 				this._paDBusConnection.call_sync(null, this._path, 'org.freedesktop.DBus.Properties', 'Set',
 					GLib.Variant.new('(ssv)', ['org.PulseAudio.Core1.Stream', property, value]), null, Gio.DBusCallFlags.NONE, -1, null);
 			} catch(e){
-				log('Laine: Exception setting value for ' +this_path +" :: "+e);
+				log('Laine: Exception setting value for ' +this._path +" :: "+e);
 			}
 	},
 
@@ -254,8 +256,35 @@ const SimpleStream = new Lang.Class({
 
 	_volSliderChanged: function(slider, value, property) {
 		let max = 65536;
+		let startV = this._volVariant;
 
-		log(max*value);
+		let maxVal = startV.get_child_value(0).get_uint32();
+		for(let i = 1; i < startV.n_children(); i++){
+			let cval = startV.get_child_value(i).get_uint32();
+			if(cval > maxVal)
+				maxVal = cval;
+		}
+
+		let target = value * max;
+		if(target != maxVal){ //Otherwise no change
+			let targetValues = new Array();
+			for(let i = 0; i < startV.n_children(); i++){
+				let newVal;
+				if(maxVal == 0)
+					newVal = target;
+				else { //To maintain any weird balance the user has set.
+					let oldVal = startV.get_child_value(i).get_uint32();
+					newVal = (oldVal/maxVal)*target;
+				}
+				newVal = Math.round(newVal);
+				targetValues[i] = GLib.Variant.new_uint32(newVal);
+			}
+
+			let prop = GLib.Variant.new_array(null, targetValues);
+			this._setPAProperty('Volume', prop);
+		}
+
+
 
 	},
 
@@ -267,7 +296,7 @@ const SimpleStream = new Lang.Class({
 			Clutter.get_current_event ());
 	},
 
-	destroy: function(){
+	_onDestroy: function(){
 		this._paDBusConnection.signal_unsubscribe(this._volSig);
 		this._paDBusConnection.signal_unsubscribe(this._muteSig);
 	}
