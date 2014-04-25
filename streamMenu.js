@@ -10,7 +10,9 @@ const Main = imports.ui.main;
 const Slider = imports.ui.slider;
 
 const WindowTracker = Shell.WindowTracker.get_default();
+
 const VOLUME_NOTIFY_ID = 1;
+const PA_MAX = 65536;
 
 const StreamMenu = new Lang.Class({
 	Name: 'StreamMenu',
@@ -124,8 +126,6 @@ const SimpleStream = new Lang.Class({
 		}
 
     	let muteBtn = new St.Button({child: icon});
-    	muteBtn.connect('clicked', Lang.bind(this, this.toggleMute));
-
 		let label = new St.Label({text:name, style_class: 'simple-stream-label', reactive: true});
 		
 		let volume;
@@ -155,6 +155,7 @@ const SimpleStream = new Lang.Class({
 		//Adding any listeners
 
 		label.connect('button-press-event', Lang.bind(this, this.switchToApp));
+    	muteBtn.connect('clicked', Lang.bind(this, this.toggleMute));
 
 		this._volSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Stream', 'VolumeUpdated',
 			this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._volumeEvent), null );
@@ -179,6 +180,7 @@ const SimpleStream = new Lang.Class({
 
 			return response.get_child_value(0).unpack();
 		} catch(e) {
+			log('Laine: Exception getting value for ' +this._path +" :: "+e);
 			return null;
 		}
 	},
@@ -215,13 +217,13 @@ const SimpleStream = new Lang.Class({
 		this._volVariant = volume; //Save this so I can maintain balance when changing volumes;
 		if(volume == null) return 0;
 
-		let avg = 0;
-		let num = volume.n_children();
-		for(let i = 0; i < num; i++)
-			avg += volume.get_child_value(i).get_uint32() / num;
-		let max = 65536; //This value comes from pactl, it is possible for it to exceed this if it is set in the control panel though, but that is then represented as > 100%
+		let maxVal = volume.get_child_value(0).get_uint32();
+		for(let i = 1; i < volume.n_children(); i++){
+			let val = volume.get_child_value(i).get_uint32();
+			if(val > maxVal) maxVal = val;
+		}
 
-		return avg/max;
+		return maxVal/PA_MAX;
 	},
 
 	isMuted: function(){
@@ -254,7 +256,6 @@ const SimpleStream = new Lang.Class({
 	},
 
 	_volSliderChanged: function(slider, value, property) {
-		let max = 65536;
 		let startV = this._volVariant;
 
 		let maxVal = startV.get_child_value(0).get_uint32();
@@ -264,7 +265,7 @@ const SimpleStream = new Lang.Class({
 				maxVal = cval;
 		}
 
-		let target = value * max;
+		let target = value * PA_MAX;
 		if(target != maxVal){ //Otherwise no change
 			let targetValues = new Array();
 			for(let i = 0; i < startV.n_children(); i++){

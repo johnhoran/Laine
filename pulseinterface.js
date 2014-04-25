@@ -25,7 +25,7 @@ let _paDBusConnection;
 function getPADBusConnection(){
 	if(_paDBusConnection) return _paDBusConnection;
 
-	let addr = /*this.getServerAddress(); //*/'unix:path=/tmp/socat-listen';
+	let addr = this.getServerAddress(); //*/'unix:path=/tmp/socat-listen';
 	_paDBusConnection = Gio.DBusConnection.new_for_address_sync(addr, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT, null, null);
 	return _paDBusConnection;
 }
@@ -57,6 +57,8 @@ function getPulseAudioConnection(){
 
 
 }
+
+
 
 function getStreams(){
 	let dbus = this.getPADBusConnection();
@@ -91,6 +93,8 @@ function getPlaybackStreamInformation(target){
 	}
 	return ans;
 }
+
+
 
 
 function addSignalHandlers(){
@@ -187,6 +191,79 @@ function isNotable(path){
 
 }
 
+function getSinks(){
+	let dbus = this.getPADBusConnection();
+	let response = dbus.call_sync(null, '/org/pulseaudio/core1', 'org.freedesktop.DBus.Properties', 'Get',
+		GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', 'Sinks']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+	let sinkVar = response.get_child_value(0).unpack();
+	let sinks = new Array();
+	for(let i = 0; i < sinkVar.n_children(); i++){
+		sinks[i] = sinkVar.get_child_value(i).get_string()[0];
+	}
+	return sinks;
+}
+
+function getSinkInformation(target){
+	let dbus = this.getPADBusConnection();
+	let response = dbus.call_sync(null, target, 'org.freedesktop.DBus.Properties', 'Get',
+		GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'ActivePort']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+
+
+	let properties = response.get_child_value(0).unpack();
+
+	print(properties);
+	/*
+	var ans = {};
+	for(let i = 0; i < properties.n_children(); i++){
+		let [index, value] = properties.get_child_value(i).unpack();
+		let bytes = new Array();
+		for(let j = 0; j < value.n_children(); j++)
+			bytes[j] = value.get_child_value(j).get_byte();
+		print(index.get_string()[0] +":::"+ String.fromCharCode.apply(String, bytes))
+		ans[index.get_string()[0]] = String.fromCharCode.apply(String, bytes);
+	}*/
+	/*
+	for(let i = 0; i < ports.n_children(); i++){
+		let portAddr = ports.get_child_value(i).get_string()[0];
+
+		let pResp = dbus.call_sync(null, portAddr, 'org.freedesktop.DBus.Properties', 'Get',
+			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.DevicePort', 'Priority']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+		let val = pResp.get_child_value(0).unpack();
+		print(val.unpack());
+	}
+	*/
+}
+
+function getDefaultSink(){
+	let dbus = this.getPADBusConnection();
+	let response = dbus.call_sync(null, '/org/pulseaudio/core1', 'org.freedesktop.DBus.Properties', 'Get',
+		GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', 'FallbackSink']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+	let dSink = response.get_child_value(0).unpack();
+	return dSink.get_string()[0];
+}
+
+
+function getVolume(target){
+	let dbus = this.getPADBusConnection();
+	let response = dbus.call_sync(null, target, 'org.freedesktop.DBus.Properties', 'Get',
+		GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'Volume']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+	let rVar = response.get_child_value(0).unpack();
+	for(let i = 0; i < rVar.n_children(); i++)
+		print(rVar.get_child_value(i).get_uint32());
+}
+
+function getPort(target){
+	let dbus = this.getPADBusConnection();
+	let response = dbus.call_sync(null, target, 'org.freedesktop.DBus.Properties', 'Get',
+		GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'ActivePort']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+	let rVar = response.get_child_value(0).unpack();
+	let portAddr = rVar.get_string()[0];
+
+	response = dbus.call_sync(null, portAddr, 'org.freedesktop.DBus.Properties', 'Get',
+		GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.DevicePort', 'Description']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+	let rVar = response.get_child_value(0).unpack();
+	print(rVar.get_string()[0]);
+}
 /*
 this.addSignalHandlers();
 
@@ -194,7 +271,7 @@ const MainLoop = GLib.MainLoop.new(null, false);
 MainLoop.run();
 
 */
-
+/*
 let streams = this.getStreams();
 for(let i = 0; i < streams.length; i++){
 	print(streams[i]);
@@ -206,3 +283,10 @@ for(let i = 0; i < streams.length; i++){
 
 }
 
+*/
+//let target = this.getDefaultSink();
+//getPort(target);
+let sinks = this.getSinks();
+for(let i = 0; i < sinks.length; i++){
+	print(sinks[i]);
+}
