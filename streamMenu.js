@@ -101,8 +101,12 @@ const SimpleStream = new Lang.Class({
 
 		let sInfo = this.getStreamInformation();
 		this._procID = parseInt(sInfo['application.process.id']);
-		this._role = sInfo['media.role'];
-		this._role = this._role.substring(0, this._role.length -1); //Need to drop a newline from the end of this string;
+		if('media.role' in sInfo){
+			this._role = sInfo['media.role'];
+			this._role = this._role.substring(0, this._role.length -1); //Need to drop a newline from the end of this string;
+		} else 
+			this._role = '';
+
 
 		this._app = WindowTracker.get_app_from_pid(this._procID);
 		if(this._app == null){
@@ -116,7 +120,10 @@ const SimpleStream = new Lang.Class({
 		let icon, name;
 		if(this._app == null){
 			name = sInfo['application.name'];
-			icon = new St.Icon({icon_name:sInfo['application.icon_name'], style_class: 'simple-stream-icon'});
+			let iname;
+			if('application.icon_name' in sInfo) iname = sInfo['application.icon_name'];
+			else iname = 'package_multimedia';
+			icon = new St.Icon({icon_name: iname, style_class: 'simple-stream-icon'});
 		} else {
 			let info = this._app.get_app_info();
 			name = info.get_name();
