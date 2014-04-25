@@ -30,26 +30,13 @@ const StreamMenu = new Lang.Class({
 			}
 		}
 
-		//Tell pulseaudio to report on these signals
-		this._paDBusConnection.call_sync(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
-			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.NewPlaybackStream', []]),  
-			null, Gio.DBusCallFlags.NONE, -1, null);
-		this._paDBusConnection.call_sync(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
-			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.PlaybackStreamRemoved', []]),  
-			null, Gio.DBusCallFlags.NONE, -1, null);
-		this._paDBusConnection.call_sync(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
-			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.Stream.VolumeUpdated', []]),  
-			null, Gio.DBusCallFlags.NONE, -1, null);
-		this._paDBusConnection.call_sync(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
-			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.Stream.MuteUpdated', []]),  
-			null, Gio.DBusCallFlags.NONE, -1, null);
-
 		//Add signal handlers
-		this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewPlaybackStream',
+		this._newStrSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewPlaybackStream',
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._addStream), null );
-		this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'PlaybackStreamRemoved',
+		this._remStrSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'PlaybackStreamRemoved',
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._removeStream), null );
 
+		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 	},
 
 	getCurrentStreams: function(){
@@ -86,6 +73,11 @@ const StreamMenu = new Lang.Class({
 			this._streams[streamPath].destroy();
 			delete this._streams[streamPath];
 		}
+	},
+
+	_onDestroy: function(){
+		this._paDBusConnection.signal_unsubscribe(this._newStrSig);
+		this._paDBusConnection.signal_unsubscribe(this._remStrSig);
 	}
 });
 
@@ -290,9 +282,6 @@ const SimpleStream = new Lang.Class({
 			let prop = GLib.Variant.new_array(null, targetValues);
 			this._setPAProperty('Volume', prop);
 		}
-
-
-
 	},
 
 	_notifyVolumeChange: function() {
