@@ -58,8 +58,10 @@ const SinkMenu = new Lang.Class({
 		this.actor.set_vertical(false);
 		this.actor.set_track_hover(true);
 		this.actor.set_reactive(true);
-*/
-		this.menu.actor.add(new St.Label({text:'test'}));
+*/	
+		let item = new PopupMenu.PopupMenuItem("test");
+		item.setOrnament(PopupMenu.Ornament.DOT);
+		this.menu.addMenuItem(item);
 		//Add listeners
 		this._slider.connect('value-changed', Lang.bind(this, this._onSliderChanged));
     	muteBtn.connect('clicked', Lang.bind(this, this._onMuteClick));
