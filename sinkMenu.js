@@ -26,9 +26,21 @@ const SinkMenu = new Lang.Class({
 
 		this._paDBusConnection = paconn;
 		this._sinks = {};
+		this._sinks.length = 0;
 
 		let sinks = this.getCurrentSinks();
+		for(let i = 0; i < sinks.length; i++){
+			let name = this._getPAProperty(sinks[i], 'org.PulseAudio.Core1.Device', 'Name');
+			name = name.get_string()[0];
 
+			let item = new PopupMenu.PopupMenuItem(name);
+			item._sinkPath = sinks[i];
+			this.menu.addMenuItem(item);
+			this._sinks[sinks[i]] = item;
+			this._sinks.length ++;
+		}
+		if(this._sinks.length < 2)
+			this._expandBtn.hide();
 
 		this._outputSink = this.getDefaultSink();
 
@@ -54,16 +66,10 @@ const SinkMenu = new Lang.Class({
 		this.actor.add(this._expandBtn);
 
 		this.actor.add_style_class_name('stream');
-		/*
-		this.actor.set_vertical(false);
-		this.actor.set_track_hover(true);
-		this.actor.set_reactive(true);
-*/
-		this.menu.actor.add(new St.Label({text:'test'}));
+
 		//Add listeners
 		this._slider.connect('value-changed', Lang.bind(this, this._onSliderChanged));
     	muteBtn.connect('clicked', Lang.bind(this, this._onMuteClick));
-    //	this._expandBtn.connect('clicked', Lang.bind(this, this._onExpandClick));
 
 		this._volSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'VolumeUpdated',
 			this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
@@ -72,7 +78,11 @@ const SinkMenu = new Lang.Class({
 		this._portSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
 			this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onPortChanged), null );
 		this._falSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'FallbackSinkUpdated',
-			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onDefaultSinkChange), null );
+			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onSinkChange), null );
+		this._skaSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewSink',
+			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onSinkChange), null );
+		this._skrSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'SinkRemoved',
+			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onSinkChange), null );
 		
 	},
 
@@ -215,25 +225,55 @@ const SinkMenu = new Lang.Class({
 		}
 	},
 
-	_onDefaultSinkChange: function(conn, sender, object, iface, signal, param, user_data){
-		this._outputSink = param.get_child_value(0).get_string()[0];
-		this._paDBusConnection.signal_unsubscribe(this._volSig);
-		this._paDBusConnection.signal_unsubscribe(this._muteSig);
-		this._paDBusConnection.signal_unsubscribe(this._portSig);
+	_onSinkChange: function(conn, sender, object, iface, signal, param, user_data){
+		let addr = param.get_child_value(0).get_string()[0];
 
-		this._volSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'VolumeUpdated',
-			this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
-		this._muteSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'MuteUpdated',
-			this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
-		this._portSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
-			this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onPortChanged), null );
+		if(signal == 'FallbackSinkUpdated'){
+			this._outputSink = addr;
+			this._paDBusConnection.signal_unsubscribe(this._volSig);
+			this._paDBusConnection.signal_unsubscribe(this._muteSig);
+			this._paDBusConnection.signal_unsubscribe(this._portSig);
 
-		//Force update of mute and volume saved values
-		let mute = this.getMute();
-		let vol = this.getVolume();
-		if(mute) vol = 0;
-		this._slider.setValue(vol);
+			this._volSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'VolumeUpdated',
+				this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
+			this._muteSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'MuteUpdated',
+				this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
+			this._portSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
+				this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onPortChanged), null );
+
+			//Force update of mute and volume saved values
+			let mute = this.getMute();
+			let vol = this.getVolume();
+			if(mute) vol = 0;
+			this._slider.setValue(vol);
+		} 
+		else if(signal == 'NewSink'){
+			let name = this._getPAProperty(addr, 'org.PulseAudio.Core1.Device', 'Name');
+			if(name != null){
+				name = name.get_string()[0];
+
+				let item = new PopupMenu.PopupMenuItem(name);
+				item._sinkPath = addr;
+				this.menu.addMenuItem(item);
+				this._sinks[addr] = item;
+				this._sinks.length ++;
+				if(this._sinks.length > 1)
+					this._expandBtn.show();
+			}
+		}
+		else if(signal == 'SinkRemoved'){
+			if(addr in this._sinks){
+				this._sinks[addr].destroy();
+				delete this._sinks[addr];
+				this._sinks.length --;
+				if(this._sinks.length < 2)
+					this._expandBtn.hide();
+
+			}
+		}
 	},
+
+
 
 	_onPortChanged: function(conn, sender, object, iface, signal, param, user_data){
 		let desc = this._getPAProperty(param.get_child_value(0).get_string()[0], 'org.PulseAudio.Core1.DevicePort', 'Description');
@@ -252,7 +292,8 @@ const SinkMenu = new Lang.Class({
 		this._paDBusConnection.signal_unsubscribe(this._muteSig);
 		this._paDBusConnection.signal_unsubscribe(this._portSig);
 		this._paDBusConnection.signal_unsubscribe(this._falSig);
-
+		this._paDBusConnection.signal_unsubscribe(this._skaSig);
+		this._paDBusConnection.signal_unsubscribe(this._skrSig);
 	}
 
 });
