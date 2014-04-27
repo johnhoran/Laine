@@ -8,6 +8,7 @@ const Clutter = imports.gi.Clutter;
 
 const BoxPointer = imports.ui.boxpointer;
 const Slider = imports.ui.slider;
+const Signals = imports.signals;
 
 const PA_MAX = 65536;
 
@@ -30,10 +31,23 @@ const SinkMenu = new Lang.Class({
 
 		let sinks = this.getCurrentSinks();
 		for(let i = 0; i < sinks.length; i++){
-			let name = this._getPAProperty(sinks[i], 'org.PulseAudio.Core1.Device', 'Name');
-			name = name.get_string()[0];
+			let properties = this._getPAProperty(sinks[i], 'org.PulseAudio.Core1.Device', 'PropertyList');
+			let name = '';
+
+			for(let j = 0; j < properties.n_children(); j++){
+				let [index, value] = properties.get_child_value(j).unpack();
+
+				if(index.get_string()[0] == 'alsa.card_name'){
+					let bytes = new Array();
+					for(let k = 0; k < value.n_children(); k++)
+						bytes[k] = value.get_child_value(k).get_byte();
+					name = String.fromCharCode.apply(String, bytes);
+					break;
+				}
+			}
 
 			let item = new PopupMenu.PopupMenuItem(name);
+			item.connect('activate', Lang.bind(this, this._onChangeSink));
 			item._sinkPath = sinks[i];
 			this.menu.addMenuItem(item);
 			this._sinks[sinks[i]] = item;
@@ -43,17 +57,13 @@ const SinkMenu = new Lang.Class({
 			this._expandBtn.hide();
 
 		this._outputSink = this.getDefaultSink();
+		this._sinks[this._outputSink].setOrnament(PopupMenu.Ornament.DOT);
 
 		this._icon = new St.Icon({style_class: 'sink-icon'});
 		let muteBtn = new St.Button({child: this._icon});
 
 		let pDesc = this.getPortDescription();
-		if(pDesc == 'Headphones')
-			this._icon.icon_name = 'audio-headphones-symbolic';
-		else if(pDesc == 'Digital Output (S/PDIF)')
-			this._icon.icon_name = 'audio-card-symbolic';
-		else
-			this._icon.icon_name = 'audio-speakers-symbolic';
+		this._setMuteIcon(pDesc);
 
 		let vol = this.getVolume();
 		let mute = this.getMute();
@@ -128,6 +138,20 @@ const SinkMenu = new Lang.Class({
 
 		let desc = this._getPAProperty(portAddr, 'org.PulseAudio.Core1.DevicePort', 'Description');
 		return desc.get_string()[0];
+	},
+
+	scroll: function(actor, event){
+		return this._slider.scroll(event);
+	},
+
+	_setMuteIcon: function(desc){
+		if(desc == 'Headphones')
+			this._icon.icon_name = 'audio-headphones-symbolic';
+		else if(desc == 'Digital Output (S/PDIF)' || desc == 'HDMI / DisplayPort')
+			this._icon.icon_name = 'audio-card-symbolic';
+		else
+			this._icon.icon_name = 'audio-speakers-symbolic';
+
 	},
 
 	_getPAProperty: function(path, iface, property){
@@ -223,13 +247,18 @@ const SinkMenu = new Lang.Class({
 				this._slider.setValue(max/PA_MAX);
 			}
 		}
+		this.emit('icon-changed', this._slider.value);
 	},
 
 	_onSinkChange: function(conn, sender, object, iface, signal, param, user_data){
 		let addr = param.get_child_value(0).get_string()[0];
 
 		if(signal == 'FallbackSinkUpdated'){
+			if(this._outputSink in this._sinks)
+				this._sinks[this._outputSink].setOrnament(PopupMenu.Ornament.NONE);
 			this._outputSink = addr;
+			this._sinks[this._outputSink].setOrnament(PopupMenu.Ornament.DOT);
+
 			this._paDBusConnection.signal_unsubscribe(this._volSig);
 			this._paDBusConnection.signal_unsubscribe(this._muteSig);
 			this._paDBusConnection.signal_unsubscribe(this._portSig);
@@ -241,25 +270,40 @@ const SinkMenu = new Lang.Class({
 			this._portSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
 				this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onPortChanged), null );
 
+
 			//Force update of mute and volume saved values
 			let mute = this.getMute();
 			let vol = this.getVolume();
 			if(mute) vol = 0;
 			this._slider.setValue(vol);
+
+			let pDesc = this.getPortDescription();
+			this._setMuteIcon(pDesc);
 		} 
 		else if(signal == 'NewSink'){
-			let name = this._getPAProperty(addr, 'org.PulseAudio.Core1.Device', 'Name');
-			if(name != null){
-				name = name.get_string()[0];
+			let properties = this._getPAProperty(addr, 'org.PulseAudio.Core1.Device', 'PropertyList');
 
-				let item = new PopupMenu.PopupMenuItem(name);
-				item._sinkPath = addr;
-				this.menu.addMenuItem(item);
-				this._sinks[addr] = item;
-				this._sinks.length ++;
-				if(this._sinks.length > 1)
-					this._expandBtn.show();
+			let name = 'Card';
+			for(let j = 0; j < properties.n_children(); j++){
+				let [index, value] = properties.get_child_value(j).unpack();
+
+				if(index.get_string()[0] == 'alsa.card_name'){
+					let bytes = new Array();
+					for(let j = 0; j < value.n_children(); j++)
+						bytes[j] = value.get_child_value(j).get_byte();
+					name = String.fromCharCode.apply(String, bytes);
+					break;
+				}
 			}
+
+			let item = new PopupMenu.PopupMenuItem(name);
+			item.connect('activate', Lang.bind(this, this._onChangeSink));
+			item._sinkPath = addr;
+			this.menu.addMenuItem(item);
+			this._sinks[addr] = item;
+			this._sinks.length ++;
+			if(this._sinks.length > 1)
+				this._expandBtn.show();
 		}
 		else if(signal == 'SinkRemoved'){
 			if(addr in this._sinks){
@@ -273,18 +317,22 @@ const SinkMenu = new Lang.Class({
 		}
 	},
 
-
-
 	_onPortChanged: function(conn, sender, object, iface, signal, param, user_data){
 		let desc = this._getPAProperty(param.get_child_value(0).get_string()[0], 'org.PulseAudio.Core1.DevicePort', 'Description');
 		desc = desc.get_string()[0];
-		if(desc == 'Headphones')
-			this._icon.icon_name = 'audio-headphones-symbolic';
-		else if(desc == 'Digital Output (S/PDIF)')
-			this._icon.icon_name = 'audio-card-symbolic';
-		else
-			this._icon.icon_name = 'audio-speakers-symbolic';
+		this._setMuteIcon(desc);
+	},
 
+	_onChangeSink: function(item){
+		this._setPAProperty('/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'FallbackSink', GLib.Variant.new_object_path(item._sinkPath));
+
+		let streams = this._getPAProperty('/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'PlaybackStreams');
+		for(let i = 0; i < streams.n_children(); i++){
+			let sPath = streams.get_child_value(0).get_string()[0];
+
+			this._paDBusConnection.call_sync(null, sPath, 'org.PulseAudio.Core1.Stream', 'Move',
+				GLib.Variant.new('(o)', [item._sinkPath]), null, Gio.DBusCallFlags.NONE, -1, null);
+		}
 	},
 
 	_onDestroy: function(){

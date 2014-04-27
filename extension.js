@@ -59,17 +59,26 @@ const Laine = new Lang.Class({
 		this._paDBusConnection = getPADBusConnection();
 
 		this._icon = new St.Icon({ icon_name: 'system-run-symbolic', style_class: 'system-status-icon' });
-		this._mainMenu = new MainMenu(this._paDBusConnection);
+
+		let sinkMenu = new SinkMenu.SinkMenu(this._paDBusConnection);
+		let streamMenu = new StreamMenu.StreamMenu(this._paDBusConnection);
+
+		sinkMenu.connect('icon-changed', Lang.bind(this, this._onUpdateIcon));
+
+		this._setIndicatorIcon(sinkMenu._slider.value);
 
 		let hbox = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
 		hbox.add_child(this._icon);
 
-
 		this.actor.add_child(hbox);
-		this.menu.addMenuItem(this._mainMenu);
+
+		this.menu.addMenuItem(sinkMenu);
+		this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+		this.menu.addMenuItem(streamMenu);
+
 		this._addPulseAudioListeners();
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
-
+		this.actor.connect('scroll-event', Lang.bind(sinkMenu, sinkMenu.scroll));
 		return 0;
 	},
 
@@ -107,6 +116,24 @@ const Laine = new Lang.Class({
 		this._paDBusConnection.call_sync(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.FallbackSinkUpdated', []]),  
 			null, Gio.DBusCallFlags.NONE, -1, null);
+	},
+
+	_setIndicatorIcon: function(value){
+		if(value == 0)
+			this._icon.icon_name = 'audio-volume-muted-symbolic';
+		else {
+			let n = Math.floor(3 * value) +1;
+			if (n < 2)
+				this._icon.icon_name = 'audio-volume-low-symbolic';
+			else if (n >= 3)
+				this._icon.icon_name = 'audio-volume-high-symbolic';
+			else
+				this._icon.icon_name = 'audio-volume-medium-symbolic';
+		}
+	},
+
+	_onUpdateIcon: function(source, value){
+		this._setIndicatorIcon(value);
 	},
 
 	_onDestroy: function(){
@@ -152,21 +179,6 @@ const Laine = new Lang.Class({
 
 });
 
-const MainMenu = new Lang.Class({
-	Name: 'VolumeMenu',
-	Extends: PopupMenu.PopupMenuSection,
-
-	_init: function(control) {
-		this.parent();
-		let sinkMenu = new SinkMenu.SinkMenu(control);
-		let sourceMenu = new StreamMenu.StreamMenu(control);
-
-		this.addMenuItem(sinkMenu);
-		this.addMenuItem(sourceMenu);
-	}
-});
-
-
 let _menuButton;
 
 function init(){}
@@ -174,8 +186,12 @@ function init(){}
 function enable(){
 	_menuButton = new Laine();
 	Main.panel.addToStatusArea('laine', _menuButton);
+	Main.panel.statusArea.aggregateMenu._volume._volumeMenu.actor.hide();
+	Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.hide();
 }
 
 function disable(){
 	_menuButton.destroy();
+	Main.panel.statusArea.aggregateMenu._volume._volumeMenu.actor.show();
+	Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.show();
 }

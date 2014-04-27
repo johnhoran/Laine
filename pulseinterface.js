@@ -264,6 +264,9 @@ function getPort(target){
 	let rVar = response.get_child_value(0).unpack();
 	print(rVar.get_string()[0]);
 }
+
+let dbus = this.getPADBusConnection();
+
 /*
 this.addSignalHandlers();
 
@@ -277,16 +280,81 @@ for(let i = 0; i < streams.length; i++){
 	print(streams[i]);
 
 
-	let dbus = this.getPADBusConnection();
 	dbus.call_sync(null, streams[i], 'org.freedesktop.DBus.Properties', 'Set',
 		GLib.Variant.new('(ssv)', ['org.PulseAudio.Core1.Stream', 'Mute', GLib.Variant.new_boolean(true)]), null, Gio.DBusCallFlags.NONE, -1, null);
 
 }
 
 */
+
+print(testIntrospection());
+
+dbus.call_sync(null, '/org/pulseaudio/core1/playback_stream3', 'org.PulseAudio.Core1.Stream', 'Move',
+		GLib.Variant.new('(o)', ['/org/pulseaudio/core1/sink8']), null, Gio.DBusCallFlags.NONE, -1, null);
+
+
 //let target = this.getDefaultSink();
 //getPort(target);
+/*
 let sinks = this.getSinks();
 for(let i = 0; i < sinks.length; i++){
+	/*
+	let response = dbus.call_sync(null, sinks[i], 'org.freedesktop.DBus.Properties', 'Get',
+		GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'PropertyList']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+	let rVar = response.get_child_value(0).unpack();
+	
+	for(let j = 0; j < rVar.n_children(); j++){
+		let [index, value] = rVar.get_child_value(j).unpack();
+		let bytes = new Array();
+		for(let j = 0; j < value.n_children(); j++)
+			bytes[j] = value.get_child_value(j).get_byte();
+
+		print(index.get_string()[0]+"::"+String.fromCharCode.apply(String, bytes));
+	}
+
+*//*
 	print(sinks[i]);
+	let response = dbus.call_sync(null, sinks[i], 'org.freedesktop.DBus.Properties', 'Get',
+		GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'Ports']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+	let rVar = response.get_child_value(0).unpack();
+	for(let j = 0; j < rVar.n_children(); j++){
+		let pAddr = rVar.get_child_value(j).get_string()[0];
+
+		let desc = dbus.call_sync(null, pAddr, 'org.freedesktop.DBus.Properties', 'Get',
+			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.DevicePort', 'Priority']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+		desc = desc.get_child_value(0).unpack();
+		print(pAddr+"  "+desc.unpack());
+	}
+
+
+
 }
+*/
+
+/*
+
+let response = dbus.call_sync(null, '/org/pulseaudio/core1', 'org.freedesktop.DBus.Properties', 'Get',
+		GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', 'Cards']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+response = response.get_child_value(0).unpack();
+for(let i = 0; i < response.n_children(); i++){
+	let cAddr = response.get_child_value(i).get_string()[0];
+	let nResp = dbus.call_sync(null, cAddr, 'org.freedesktop.DBus.Properties', 'Get',
+		GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Card', 'Name']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+	nResp = nResp.get_child_value(0).unpack();
+	print(nResp.get_string()[0]);
+
+	nResp = dbus.call_sync(null, cAddr, 'org.freedesktop.DBus.Properties', 'Get',
+		GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Card', 'PropertyList']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+	let properties = nResp.get_child_value(0).unpack();
+
+	for(let i = 0; i < properties.n_children(); i++){
+		let [index, value] = properties.get_child_value(i).unpack();
+		let bytes = new Array();
+		for(let j = 0; j < value.n_children(); j++)
+			bytes[j] = value.get_child_value(j).get_byte();
+		print(index.get_string()[0]+ " :: "+String.fromCharCode.apply(String, bytes));
+	}
+}
+*/
+
+
