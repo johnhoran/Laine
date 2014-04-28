@@ -25,7 +25,7 @@ const StreamMenu = new Lang.Class({
 		this.parent();
 		this._paDBusConnection = paconn;
 
-	//	this._mprisControl = new MPRISStream.Control(this, this._paDBusConnection);
+		this._mprisControl = new MPRISStream.Control(this, this._paDBusConnection);
 
 		this._streams = {};
 		this._streams.length = 0;
@@ -329,7 +329,10 @@ const SimpleStream = new Lang.Class({
 
 				let prop = GLib.Variant.new_array(null, targetValues);
 				//this._volVariant = prop;
+
 				this._setPAProperty('Volume', prop);
+				if(this._muteVal)
+					this._setPAProperty('Mute', GLib.Variant.new_boolean(false));
 			}
 		}
 	},
