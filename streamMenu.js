@@ -10,6 +10,9 @@ const Main = imports.ui.main;
 const Slider = imports.ui.slider;
 
 const WindowTracker = Shell.WindowTracker.get_default();
+const Me = imports.misc.extensionUtils.getCurrentExtension();
+
+const MPRISStream = Me.imports.mprisStream;
 
 const VOLUME_NOTIFY_ID = 1;
 const PA_MAX = 65536;
@@ -21,16 +24,18 @@ const StreamMenu = new Lang.Class({
 	_init: function(paconn){
 		this.parent();
 		this._paDBusConnection = paconn;
+
+	//	this._mprisControl = new MPRISStream.Control(this, this._paDBusConnection);
+
 		this._streams = {};
+		this._streams.length = 0;
 
 		let streams = this.getCurrentStreams();
-		for(let i = 0; i < streams.length; i++){
-			let stream = new SimpleStream(this._paDBusConnection, streams[i]);
-			if(stream.isNotable()){
-				this._streams[streams[i]] = stream;
-				this.addMenuItem(stream);
-			}
-		}
+		for(let i = 0; i < streams.length; i++)
+			this._addPAStream(streams[i]);
+
+		if(this._streams.length == 0)
+				this.actor.hide();
 
 		//Add signal handlers
 		this._sigNewStr = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewPlaybackStream',
@@ -55,14 +60,59 @@ const StreamMenu = new Lang.Class({
 		return ans;
 	},
 
-	_onAddStream: function(conn, sender, object, iface, signal, param, user_data){
-		let streamPath = param.get_child_value(0).unpack();
-		let stream = new SimpleStream(this._paDBusConnection, streamPath);
-		if(stream.isNotable()){
-			this._streams[streamPath] = stream;
-			this.addMenuItem(stream);
+	getPAStreamInformation: function(path){
+		let properties;
+		try{
+			let response = this._paDBusConnection.call_sync(null, path, 'org.freedesktop.DBus.Properties', 'Get',
+				GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Stream', 'PropertyList']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+
+			properties = response.get_child_value(0).unpack();
+		} catch(e){
+			log("Laine: exception when conneting to PA DBus "+e);
+			return null;
 		}
 
+		let ans = {};
+		if(properties != null)
+			for(let i = 0; i < properties.n_children(); i++){
+				let [index, value] = properties.get_child_value(i).unpack();
+				let bytes = new Array();
+				for(let j = 0; j < value.n_children(); j++)
+					bytes[j] = value.get_child_value(j).get_byte();
+
+				ans[index.get_string()[0]] = String.fromCharCode.apply(String, bytes);
+			}
+
+		return ans;
+	},
+
+	_addPAStream: function(path){
+		let streamProps = this.getPAStreamInformation(path);
+		
+		let pID = parseInt(streamProps['application.process.id']);
+		if('media.role' in streamProps){
+			let role = streamProps['media.role'];
+			role = role.substring(0, role.length -1); 
+			if(role == 'event') return;
+		}
+
+		if(this._mprisControl){
+			let mprisCheck = this._mprisControl.isMPRISStream(pID, path);
+			if(mprisCheck) return;
+		}
+
+		let stream = new SimpleStream(this._paDBusConnection, path, streamProps);
+		this._streams[path] = stream;
+		this.addMenuItem(stream);
+		this._streams.length ++;
+	},
+
+	_onAddStream: function(conn, sender, object, iface, signal, param, user_data){
+		let streamPath = param.get_child_value(0).unpack();
+		this._addPAStream(streamPath);
+
+		if(this._streams.length > 0)
+			this.actor.show();
 	},
 
 	_onRemoveStream: function(conn, sender, object, iface, signal, param, user_data){
@@ -73,6 +123,10 @@ const StreamMenu = new Lang.Class({
 
 			this._streams[streamPath].destroy();
 			delete this._streams[streamPath];
+			this._streams.length --;
+
+			if(this._streams.length == 0)
+				this.actor.hide();
 		}
 	},
 
@@ -87,19 +141,12 @@ const SimpleStream = new Lang.Class({
 	Name: 'SimpleStream',
 	Extends: PopupMenu.PopupMenuSection,
 
-	_init: function(paconn, path){
+	_init: function(paconn, path, sInfo){
 		this.parent();
 		this._paDBusConnection = paconn;
 		this._path = path;
 
-		let sInfo = this.getStreamInformation();
 		this._procID = parseInt(sInfo['application.process.id']);
-		if('media.role' in sInfo){
-			this._role = sInfo['media.role'];
-			this._role = this._role.substring(0, this._role.length -1); //Need to drop a newline from the end of this string;
-		} else 
-			this._role = '';
-
 
 		this._app = WindowTracker.get_app_from_pid(this._procID);
 		if(this._app == null){
@@ -164,12 +211,6 @@ const SimpleStream = new Lang.Class({
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 	},
 
-	isNotable:function(){
-		if(this._role == 'event')
-			return false;
-		return true;
-	},
-
 	_getPAProperty: function(property){
 		try{
 			let response = this._paDBusConnection.call_sync(null, this._path, 'org.freedesktop.DBus.Properties', 'Get',
@@ -190,23 +231,6 @@ const SimpleStream = new Lang.Class({
 			} catch(e){
 				log('Laine: Exception setting value for ' +this._path +" :: "+e);
 			}
-	},
-
-	getStreamInformation: function(){
-		let ans = {};
-
-		let properties = this._getPAProperty('PropertyList');
-		if(properties != null)
-			for(let i = 0; i < properties.n_children(); i++){
-				let [index, value] = properties.get_child_value(i).unpack();
-				let bytes = new Array();
-				for(let j = 0; j < value.n_children(); j++)
-					bytes[j] = value.get_child_value(j).get_byte();
-
-				ans[index.get_string()[0]] = String.fromCharCode.apply(String, bytes);
-			}
-
-		return ans;
 	},
 
 	getVolume: function(){
