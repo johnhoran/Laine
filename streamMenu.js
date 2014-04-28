@@ -33,10 +33,10 @@ const StreamMenu = new Lang.Class({
 		}
 
 		//Add signal handlers
-		this._newStrSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewPlaybackStream',
-			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._addStream), null );
-		this._remStrSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'PlaybackStreamRemoved',
-			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._removeStream), null );
+		this._sigNewStr = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewPlaybackStream',
+			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onAddStream), null );
+		this._sigRemStr = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'PlaybackStreamRemoved',
+			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onRemoveStream), null );
 
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 	},
@@ -55,9 +55,8 @@ const StreamMenu = new Lang.Class({
 		return ans;
 	},
 
-	_addStream: function(conn, sender, object, iface, signal, param, user_data){
+	_onAddStream: function(conn, sender, object, iface, signal, param, user_data){
 		let streamPath = param.get_child_value(0).unpack();
-		
 		let stream = new SimpleStream(this._paDBusConnection, streamPath);
 		if(stream.isNotable()){
 			this._streams[streamPath] = stream;
@@ -66,7 +65,7 @@ const StreamMenu = new Lang.Class({
 
 	},
 
-	_removeStream: function(conn, sender, object, iface, signal, param, user_data){
+	_onRemoveStream: function(conn, sender, object, iface, signal, param, user_data){
 		
 		let streamPath = param.get_child_value(0).unpack();
 		
@@ -78,8 +77,8 @@ const StreamMenu = new Lang.Class({
 	},
 
 	_onDestroy: function(){
-		this._paDBusConnection.signal_unsubscribe(this._newStrSig);
-		this._paDBusConnection.signal_unsubscribe(this._remStrSig);
+		this._paDBusConnection.signal_unsubscribe(this._sigNewStr);
+		this._paDBusConnection.signal_unsubscribe(this._sigRemStr);
 	}
 });
 
@@ -128,11 +127,9 @@ const SimpleStream = new Lang.Class({
     	let muteBtn = new St.Button({child: icon});
 		let label = new St.Label({text:name, style_class: 'simple-stream-label', reactive: true});
 		
-		let volume;
-		if(this.isMuted())
-			volume = 0;
-		else 
-			volume = this.getVolume();
+		let volume = this.getVolume();
+		let mute = this.isMuted();
+		if(mute) volume = 0;
 
 		this._volSlider = new Slider.Slider(volume);
 		this._volSlider.actor.add_style_class_name('simple-stream-slider');
@@ -155,14 +152,14 @@ const SimpleStream = new Lang.Class({
 		//Adding any listeners
 
 		label.connect('button-press-event', Lang.bind(this, this.switchToApp));
-    	muteBtn.connect('clicked', Lang.bind(this, this.toggleMute));
+    	muteBtn.connect('clicked', Lang.bind(this, this._onMuteClick));
 
-		this._volSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Stream', 'VolumeUpdated',
-			this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._volumeEvent), null );
-		this._muteSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Stream', 'MuteUpdated',
-			this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._volumeEvent), null );
+		this._sigVol = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Stream', 'VolumeUpdated',
+			this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeEvent), null );
+		this._sigMute = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Stream', 'MuteUpdated',
+			this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeEvent), null );
 
-		this._volSlider.connect('value-changed', Lang.bind(this, this._volSliderChanged));
+		this._volSlider.connect('value-changed', Lang.bind(this, this._onVolSliderChanged));
 		this._volSlider.connect('drag-end', Lang.bind(this, this._notifyVolumeChange));
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 	},
@@ -228,9 +225,11 @@ const SimpleStream = new Lang.Class({
 
 	isMuted: function(){
 		let mute = this._getPAProperty('Mute');
-		if(mute == null) return true;
-
-		return mute.get_boolean();
+		let ans;
+		if(mute == null) ans = true;
+		else ans = mute.get_boolean();
+		this._muteVal = ans;
+		return ans;
 	},
 
 	switchToApp: function(){
@@ -238,50 +237,76 @@ const SimpleStream = new Lang.Class({
 			this._app.activate();
 	},
 
-	_volumeEvent: function(conn, sender, object, iface, signal, param, user_data){
+	_onVolumeEvent: function(conn, sender, object, iface, signal, param, user_data){
 		if(signal == 'MuteUpdated'){
-			if(this.isMuted())
+			this._muteVal = param.get_child_value(0).get_boolean();
+
+			if(this._muteVal)
 				this._volSlider.setValue(0);
-			else
-				this._volSlider.setValue(this.getVolume());
-		} else if(signal == 'VolumeUpdated'){
-			this._volSlider.setValue(this.getVolume());
-		}
-	},
-
-	toggleMute: function(){
-		let muteVal = (this._volSlider.value != 0);
-
-		this._setPAProperty('Mute', GLib.Variant.new_boolean(muteVal));
-	},
-
-	_volSliderChanged: function(slider, value, property) {
-		let startV = this._volVariant;
-
-		let maxVal = startV.get_child_value(0).get_uint32();
-		for(let i = 1; i < startV.n_children(); i++){
-			let cval = startV.get_child_value(i).get_uint32();
-			if(cval > maxVal)
-				maxVal = cval;
-		}
-
-		let target = value * PA_MAX;
-		if(target != maxVal){ //Otherwise no change
-			let targetValues = new Array();
-			for(let i = 0; i < startV.n_children(); i++){
-				let newVal;
-				if(maxVal == 0)
-					newVal = target;
-				else { //To maintain any weird balance the user has set.
-					let oldVal = startV.get_child_value(i).get_uint32();
-					newVal = (oldVal/maxVal)*target;
+			else {
+				let max = this._volVariant.get_child_value(0).get_uint32();
+				for(let i = 1; i < this._volVariant.n_children(); i++){
+					let val = this._volVariant.get_child_value(i).get_uint32();
+					if(max < val) max = val;
 				}
-				newVal = Math.round(newVal);
-				targetValues[i] = GLib.Variant.new_uint32(newVal);
+				this._volSlider.setValue(max/PA_MAX);
+			}
+		}
+		else if(signal == 'VolumeUpdated'){
+			let vals = param.get_child_value(0);
+			let startV = this._volVariant;
+
+			let oldMax = startV.get_child_value(0).get_uint32();
+			let newMax = vals.get_child_value(0).get_uint32();
+			for(let i = 1; i < vals.n_children; i++){
+				let oVal = startV.get_child_value(i).get_uint32();
+				let nVal = vals[i].get_uint32();
+
+				if(oVal > oldMax) oldMax = oVal;
+				if(nVal > newMax) newMax = nVal;
 			}
 
-			let prop = GLib.Variant.new_array(null, targetValues);
-			this._setPAProperty('Volume', prop);
+			if(oldMax != newMax){ //Otherwise there is no change
+				this._volVariant = vals;
+				this._volSlider.setValue(newMax / PA_MAX);
+			}
+		} 
+	},
+
+	_onMuteClick: function(){
+		this._setPAProperty('Mute', GLib.Variant.new_boolean(!this._muteVal));
+	},
+
+	_onVolSliderChanged: function(slider, value, property){
+		if(!(this._muteVal && value == 0)){
+
+			let startV = this._volVariant;
+
+			let maxVal = startV.get_child_value(0).get_uint32();
+			for(let i = 1; i < startV.n_children(); i++){
+				let val = startV.get_child_value(i).get_uint32();
+				if(val > maxVal) maxVal = val;
+			}
+
+			let target = value * PA_MAX;
+			if(target != maxVal){ //Otherwise no change
+				let targetValues = new Array();
+				for(let i = 0; i < startV.n_children(); i++){
+					let newVal;
+					if(maxVal == 0)
+						newVal = target;
+					else { //To maintain any balance the user has set.
+						let oldVal = startV.get_child_value(i).get_uint32();
+						newVal = (oldVal/maxVal)*target;
+					}
+					newVal = Math.round(newVal);
+					targetValues[i] = GLib.Variant.new_uint32(newVal);
+				}
+
+				let prop = GLib.Variant.new_array(null, targetValues);
+				//this._volVariant = prop;
+				this._setPAProperty('Volume', prop);
+			}
 		}
 	},
 
@@ -294,8 +319,8 @@ const SimpleStream = new Lang.Class({
 	},
 
 	_onDestroy: function(){
-		this._paDBusConnection.signal_unsubscribe(this._volSig);
-		this._paDBusConnection.signal_unsubscribe(this._muteSig);
+		this._paDBusConnection.signal_unsubscribe(this._sigVol);
+		this._paDBusConnection.signal_unsubscribe(this._sigMute);
 	}
 
 });

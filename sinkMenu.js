@@ -81,17 +81,17 @@ const SinkMenu = new Lang.Class({
 		this._slider.connect('value-changed', Lang.bind(this, this._onSliderChanged));
     	muteBtn.connect('clicked', Lang.bind(this, this._onMuteClick));
 
-		this._volSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'VolumeUpdated',
+		this._sigVol = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'VolumeUpdated',
 			this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
-		this._muteSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'MuteUpdated',
+		this._sigMute = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'MuteUpdated',
 			this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
-		this._portSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
+		this._sigPort = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
 			this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onPortChanged), null );
-		this._falSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'FallbackSinkUpdated',
+		this._sigFall = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'FallbackSinkUpdated',
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onSinkChange), null );
-		this._skaSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewSink',
+		this._sigSkA = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewSink',
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onSinkChange), null );
-		this._skrSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'SinkRemoved',
+		this._sigSkR = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'SinkRemoved',
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onSinkChange), null );
 		
 	},
@@ -259,15 +259,15 @@ const SinkMenu = new Lang.Class({
 			this._outputSink = addr;
 			this._sinks[this._outputSink].setOrnament(PopupMenu.Ornament.DOT);
 
-			this._paDBusConnection.signal_unsubscribe(this._volSig);
-			this._paDBusConnection.signal_unsubscribe(this._muteSig);
-			this._paDBusConnection.signal_unsubscribe(this._portSig);
+			this._paDBusConnection.signal_unsubscribe(this._sigVol);
+			this._paDBusConnection.signal_unsubscribe(this._sigMute);
+			this._paDBusConnection.signal_unsubscribe(this._sigPort);
 
-			this._volSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'VolumeUpdated',
+			this._sigVol = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'VolumeUpdated',
 				this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
-			this._muteSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'MuteUpdated',
+			this._sigMute = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'MuteUpdated',
 				this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
-			this._portSig = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
+			this._sigPort = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
 				this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onPortChanged), null );
 
 
@@ -336,12 +336,12 @@ const SinkMenu = new Lang.Class({
 	},
 
 	_onDestroy: function(){
-		this._paDBusConnection.signal_unsubscribe(this._volSig);
-		this._paDBusConnection.signal_unsubscribe(this._muteSig);
-		this._paDBusConnection.signal_unsubscribe(this._portSig);
-		this._paDBusConnection.signal_unsubscribe(this._falSig);
-		this._paDBusConnection.signal_unsubscribe(this._skaSig);
-		this._paDBusConnection.signal_unsubscribe(this._skrSig);
+		this._paDBusConnection.signal_unsubscribe(this._sigVol);
+		this._paDBusConnection.signal_unsubscribe(this._sigMute);
+		this._paDBusConnection.signal_unsubscribe(this._sigPort);
+		this._paDBusConnection.signal_unsubscribe(this._sigFall);
+		this._paDBusConnection.signal_unsubscribe(this._sigSkA);
+		this._paDBusConnection.signal_unsubscribe(this._sigSkR);
 	}
 
 });
