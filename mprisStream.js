@@ -153,10 +153,12 @@ const MPRISStream = new Lang.Class({
 		let muteBtn = new St.Button({child: icon});
 		let label = new St.Label({text:name, style_class: 'simple-stream-label', reactive: true});
 
+		this._songLbl = new St.Label({style_class: 'mpris-info-label'});
+		this._artistLbl = new St.Label({style_class: 'mpris-info-label'});
+		this._albumLbl = new St.Label({style_class: 'mpris-info-label'});
+
 		this.actor.add(muteBtn);
 		this.actor.add(label);
-
-
 
 		this.actor.add(this._songLbl);
 		this.actor.add(this._artistLbl);
@@ -221,15 +223,52 @@ const MPRISStream = new Lang.Class({
 
 	},
 
-	_onLabelClick: function(){
+
+
+	_getDBusProperty: function(iface, property){
+		try{
+			let resp = this._dbus.call_sync(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+				GLib.Variant.new('(ss)', [iface, property]), GLib.VariantType.new("(v)"),
+				Gio.DBusCallFlags.NONE, -1, null);
+			return resp.get_child_value(0).unpack();
+		} catch(e) {
+			log('Laine: Exception getting value for ' +this._paPath +" :: "+e);
+			return null;
+		}
+	},
+
+	_setDBusProperty: function(iface, property, value){
+		if(value instanceof GLib.Variant)
+			try{
+				this._dbus.call_sync(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+					GLib.Variant.new('(ssv)', [iface, property, value]), GLib.VariantType.new("(v)"),
+					Gio.DBusCallFlags.NONE, -1, null);
+				} catch(e){
+				log('Laine: Exception setting value for ' +this._paPath +" :: "+e);
+			}
 
 	},
 
-	_getDBusProperty: function(iface, property){
-		let resp = this._dbus.call_sync(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
-			GLib.Variant.new('(ss)', [iface, property]), GLib.VariantType.new("(v)"),
-			Gio.DBusCallFlags.NONE, -1, null);
-		return resp.get_child_value(0).unpack();
-	}
 
+	_getPAProperty: function(property){
+		try{
+			let response = this._paDBusConnection.call_sync(null, this._paPath, 'org.freedesktop.DBus.Properties', 'Get',
+				GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Stream', property]), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
+
+			return response.get_child_value(0).unpack();
+		} catch(e) {
+			log('Laine: Exception getting value for ' +this._paPath +" :: "+e);
+			return null;
+		}
+	},
+
+	_setPAProperty: function(property, value){
+		if(value instanceof GLib.Variant)
+			try{
+				this._paDBusConnection.call_sync(null, this._paPath, 'org.freedesktop.DBus.Properties', 'Set',
+					GLib.Variant.new('(ssv)', ['org.PulseAudio.Core1.Stream', property, value]), null, Gio.DBusCallFlags.NONE, -1, null);
+			} catch(e){
+				log('Laine: Exception setting value for ' +this._paPath +" :: "+e);
+			}
+	}
 });

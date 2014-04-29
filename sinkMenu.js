@@ -205,6 +205,8 @@ const SinkMenu = new Lang.Class({
 				let prop = GLib.Variant.new_array(null, targetValues);
 				//this._volVariant = prop;
 				this._setPAProperty(this._outputSink, 'org.PulseAudio.Core1.Device', 'Volume', prop);
+				if(this._muteVal)
+					this._setPAProperty(this._outputSink, 'org.PulseAudio.Core1.Device', 'Mute', GLib.Variant.new_boolean(false));
 			}
 		}
 	},

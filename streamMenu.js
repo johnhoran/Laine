@@ -329,7 +329,10 @@ const SimpleStream = new Lang.Class({
 
 				let prop = GLib.Variant.new_array(null, targetValues);
 				//this._volVariant = prop;
+
 				this._setPAProperty('Volume', prop);
+				if(this._muteVal)
+					this._setPAProperty('Mute', GLib.Variant.new_boolean(false));
 			}
 		}
 	},
