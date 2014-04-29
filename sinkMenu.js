@@ -328,7 +328,7 @@ const SinkMenu = new Lang.Class({
 
 		let streams = this._getPAProperty('/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'PlaybackStreams');
 		for(let i = 0; i < streams.n_children(); i++){
-			let sPath = streams.get_child_value(0).get_string()[0];
+			let sPath = streams.get_child_value(i).get_string()[0];
 
 			this._paDBusConnection.call_sync(null, sPath, 'org.PulseAudio.Core1.Stream', 'Move',
 				GLib.Variant.new('(o)', [item._sinkPath]), null, Gio.DBusCallFlags.NONE, -1, null);

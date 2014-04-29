@@ -70,7 +70,8 @@ const Control = new Lang.Class({
 	isMPRISStream: function(pid, path){
 		if(pid in this._mprisStreams){
 			this._mprisStreams[pid].setPAStream(path);
-			return true;
+			return false;
+			//return true;
 		}
 		return false;
 	},
@@ -141,16 +142,80 @@ const MPRISStream = new Lang.Class({
 			icon = new St.Icon({icon_name: 'package_multimedia', style_class: 'simple-stream-icon'});
 		}
 
+		this._songLbl = new St.Label({style_class:'mpris-description'});
+		this._artistLbl = new St.Label({style_class:'mpris-description'});
+		this._albumLbl = new St.Label({style_class:'mpris-description'});
+		this._albumArt = new St.Icon({style_class:'album-art'});
+
+		let metatdata = this._getDBusProperty('org.mpris.MediaPlayer2.Player', 'Metadata');
+		this._handleMetadata(metatdata);
+
 		let muteBtn = new St.Button({child: icon});
 		let label = new St.Label({text:name, style_class: 'simple-stream-label', reactive: true});
 
 		this.actor.add(muteBtn);
 		this.actor.add(label);
+
+
+
+		this.actor.add(this._songLbl);
+		this.actor.add(this._artistLbl);
+		this.actor.add(this._albumLbl);
+		this.actor.add(this._albumArt);
 	},
 
 	setPAStream: function(path){
 		this._paPath = path;
 	},
+
+	_handleMetadata: function(meta){
+		log(meta);
+
+		let metaD = {};
+		for(let i = 0; i < meta.n_children(); i++){
+			let [key, val] = meta.get_child_value(i).unpack();
+
+			key = key.get_string()[0];
+			val = val.unpack();
+			metaD[key] = val;
+		}
+
+		if('xesam:title' in metaD){
+			this._songLbl.text = metaD['xesam:title'].get_string()[0];
+		}
+
+		if('xesam:artist' in metaD){
+			let artists = metaD['xesam:artist'];
+			let str = artists.get_child_value(0).get_string()[0];
+
+			for(let i = 1; i < artists.n_children(); i++)
+				str += ', '+artists.get_child_value(i).get_string()[0];
+
+			this._artistLbl.text = str;
+		}
+
+		if('xesam:album' in metaD){
+			this._albumLbl.text = metaD['xesam:album'].get_string()[0];
+		}
+
+		if('mpris:artUrl' in metaD){
+			let filePath = metaD['mpris:artUrl'].get_string()[0];
+			iconPath = filePath.substring(7, filePath.length);
+
+			if(GLib.file_test(iconPath, GLib.FileTest.EXISTS)){
+				let file = Gio.File.new_for_path(iconPath)
+				let icon = new Gio.FileIcon({file:file});
+				this._albumArt.gicon = icon;
+
+				//	log(metaD['mpris:artUrl'].get_string()[0]);
+			}
+		}
+
+		/*
+'mpris:length'
+'mpris:artUrl'*/
+	},
+
 
 	_onMuteClick: function(){
 

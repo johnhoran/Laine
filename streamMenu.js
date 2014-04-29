@@ -25,7 +25,7 @@ const StreamMenu = new Lang.Class({
 		this.parent();
 		this._paDBusConnection = paconn;
 
-	//	this._mprisControl = new MPRISStream.Control(this, this._paDBusConnection);
+		this._mprisControl = new MPRISStream.Control(this, this._paDBusConnection);
 
 		this._streams = {};
 		this._streams.length = 0;
