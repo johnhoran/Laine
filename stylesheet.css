@@ -31,6 +31,13 @@
 	icon-size:18px;
 }
 
+.mpris-stream{
+	padding-left: 20px;
+	padding-right: 20px;
+	padding-bottom: 10px;
+	padding-top: 10px;
+}
+
 .mpris-label-subtext {
 	font-weight: lighter;
 	font-size: 70%;
@@ -56,6 +63,10 @@
 	padding-right:0.3em;
 }
 
+.mpris-metadata-display:alone {
+	padding-top:0.2em;
+}
+
 .mpris-player-controls > StButton{
 	color: #e6e6e6;
 }
@@ -63,6 +74,11 @@
 .mpris-player-controls > StButton:hover {
 	color: white;
 	background-color: #4c4c4c;
+}
+
+.mpris-player-controls > StButton:disabled {
+	color: #3f3f3f;
+	border-color: #3f3f3f;
 }
 
 .mpris-player-controls > StButton:active {
@@ -83,6 +99,7 @@
 
 .mpris-play-button:alone {
 	border-radius: 0.5em;
+	padding: 0.2em;
 }
 
 .mpris-previous-button {

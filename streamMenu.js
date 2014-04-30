@@ -28,6 +28,7 @@ const StreamMenu = new Lang.Class({
 		this._mprisControl = new MPRISStream.Control(this, this._paDBusConnection);
 
 		this._streams = {};
+		this._delegatedStreams = {};
 		this._streams.length = 0;
 
 		let streams = this.getCurrentStreams();
@@ -98,7 +99,10 @@ const StreamMenu = new Lang.Class({
 
 		if(this._mprisControl){
 			let mprisCheck = this._mprisControl.isMPRISStream(pID, path);
-			if(mprisCheck) return;
+			if(mprisCheck){
+				this._delegatedStreams[path] = this._mprisControl;
+				return;
+			}
 		}
 
 		let stream = new SimpleStream(this._paDBusConnection, path, streamProps);
@@ -127,6 +131,10 @@ const StreamMenu = new Lang.Class({
 /*
 			if(this._streams.length == 0)
 				this.actor.hide();*/
+		}
+		else if(streamPath in this._delegatedStreams){
+			this._delegatedStreams[streamPath].removePAStream(streamPath);
+			delete this._delegatedStreams[streamPath];
 		}
 	},
 
