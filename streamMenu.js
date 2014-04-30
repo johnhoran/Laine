@@ -33,9 +33,9 @@ const StreamMenu = new Lang.Class({
 		let streams = this.getCurrentStreams();
 		for(let i = 0; i < streams.length; i++)
 			this._addPAStream(streams[i]);
-
+/*
 		if(this._streams.length == 0)
-				this.actor.hide();
+				this.actor.hide();*/
 
 		//Add signal handlers
 		this._sigNewStr = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewPlaybackStream',
@@ -110,9 +110,9 @@ const StreamMenu = new Lang.Class({
 	_onAddStream: function(conn, sender, object, iface, signal, param, user_data){
 		let streamPath = param.get_child_value(0).unpack();
 		this._addPAStream(streamPath);
-
+/*
 		if(this._streams.length > 0)
-			this.actor.show();
+			this.actor.show();*/
 	},
 
 	_onRemoveStream: function(conn, sender, object, iface, signal, param, user_data){
@@ -124,9 +124,9 @@ const StreamMenu = new Lang.Class({
 			this._streams[streamPath].destroy();
 			delete this._streams[streamPath];
 			this._streams.length --;
-
+/*
 			if(this._streams.length == 0)
-				this.actor.hide();
+				this.actor.hide();*/
 		}
 	},
 
