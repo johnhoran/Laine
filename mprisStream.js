@@ -144,7 +144,11 @@ const MPRISStream = new Lang.Class({
 		this._patPath = null;
 
 
+		this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+			GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2', 'DesktopEntry']), GLib.VariantType.new("(v)"),
+			Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, this._hdlDesktopEntry));
 
+/*
 		let dEntry = this._getDBusProperty('org.mpris.MediaPlayer2', 'DesktopEntry').get_string()[0];
 		let icon, name;
 		if(dEntry != ''){
@@ -160,10 +164,10 @@ const MPRISStream = new Lang.Class({
 		if(name == null){
 			name = this._getDBusProperty('org.mpris.MediaPlayer2', 'Identity').get_string()[0];
 			icon = new St.Icon({icon_name: 'package_multimedia', style_class: 'simple-stream-icon'});
-		}
+		}*/
 
-		let muteBtn = new St.Button({child: icon});
-		let label = new St.Label({text:name, style_class: 'simple-stream-label', reactive: true});
+		this._muteBtn = new St.Button();
+		this._label = new St.Label({style_class: 'simple-stream-label', reactive: true});
 		this._volSlider = new Slider.Slider(0);
 
 		this._songLbl = new St.Label({style_class:'mpris-meta-title'});
@@ -183,10 +187,10 @@ const MPRISStream = new Lang.Class({
 
 		//Laying out the components
 		let volBoxI = new St.BoxLayout({vertical:true});
-		volBoxI.add(label);
+		volBoxI.add(this._label);
 		volBoxI.add(this._volSlider.actor,{expand:true});
 		let volBoxO = new St.BoxLayout();
-		volBoxO.add(muteBtn);
+		volBoxO.add(this._muteBtn);
 		volBoxO.add(volBoxI, {expand:true});
 
 		let artistBox = new St.BoxLayout();
@@ -243,10 +247,42 @@ const MPRISStream = new Lang.Class({
 		this._nextBtn.connect('clicked', Lang.bind(this, this._onControlBtnClick));
 		this._prevBtn.connect('clicked', Lang.bind(this, this._onControlBtnClick));
 
-		muteBtn.connect('clicked', Lang.bind(this, this._onMuteClick));
+		this._muteBtn.connect('clicked', Lang.bind(this, this._onMuteClick));
 
 
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
+	},
+
+
+	//Async functions
+	_hdlDesktopEntry: function(conn, result){
+		let res = conn.call_finish(result);
+		res = res.get_child_value(0).unpack();
+		
+		let dName = res.get_string()[0];
+		let icon;
+		let app = Shell.AppSystem.get_default().lookup_app(dName+".desktop");
+		if(app != null){
+			let info = app.get_app_info();
+			this._label.text = info.get_name();
+			icon = new St.Icon({style_class: 'simple-stream-icon'});
+			icon.set_gicon(info.get_icon());
+		} else {
+			icon = new St.Icon({icon_name: 'package_multimedia', style_class: 'simple-stream-icon'});
+			this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+				GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2', 'Identity']), GLib.VariantType.new("(v)"),
+				Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, this._hdlDesktopEntry));
+		}
+
+		this._muteBtn.child = icon;
+	},
+
+	_hdlIdentity: function(conn, result){
+		let res = conn.call_finish(result);
+		res = res.get_child_value(0).unpack();
+
+		let identity = result.get_string()[0];
+		this.label.text = identity;
 	},
 
 

@@ -10,6 +10,7 @@ const BoxPointer = imports.ui.boxpointer;
 const Slider = imports.ui.slider;
 const Signals = imports.signals;
 
+const VOLUME_NOTIFY_ID = 1;
 const PA_MAX = 65536;
 
 const SinkMenu = new Lang.Class({
@@ -79,6 +80,7 @@ const SinkMenu = new Lang.Class({
 
 		//Add listeners
 		this._slider.connect('value-changed', Lang.bind(this, this._onSliderChanged));
+		this._slider.connect('drag-end', Lang.bind(this, this._notifyVolumeChange));
     	muteBtn.connect('clicked', Lang.bind(this, this._onMuteClick));
 
 		this._sigVol = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'VolumeUpdated',
@@ -335,6 +337,14 @@ const SinkMenu = new Lang.Class({
 			this._paDBusConnection.call_sync(null, sPath, 'org.PulseAudio.Core1.Stream', 'Move',
 				GLib.Variant.new('(o)', [item._sinkPath]), null, Gio.DBusCallFlags.NONE, -1, null);
 		}
+	},
+
+	_notifyVolumeChange: function() {
+		global.cancel_theme_sound(VOLUME_NOTIFY_ID);
+		global.play_theme_sound(VOLUME_NOTIFY_ID,
+			'audio-volume-change',
+			_("Volume changed"),
+			Clutter.get_current_event ());
 	},
 
 	_onDestroy: function(){
