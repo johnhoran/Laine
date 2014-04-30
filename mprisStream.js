@@ -144,6 +144,7 @@ const MPRISStream = new Lang.Class({
 		this._patPath = null;
 
 
+
 		let dEntry = this._getDBusProperty('org.mpris.MediaPlayer2', 'DesktopEntry').get_string()[0];
 		let icon, name;
 		if(dEntry != ''){
@@ -174,10 +175,6 @@ const MPRISStream = new Lang.Class({
 		this._prevBtn = new St.Button({child: new St.Icon({icon_name: 'media-skip-backward-symbolic'}), style_class:'mpris-previous-button'});
 		this._nextBtn = new St.Button({child: new St.Icon({icon_name: 'media-skip-forward-symbolic'}), style_class:'mpris-next-button'});
 
-		this._fullscreenBtn = new St.Button({child: new St.Icon({icon_name: 'view-fullscreen-symbolic'}), style_class:'mpris-fullscreen-button'});
-		this._shuffleBtn =  new St.Button({child: new St.Icon({icon_name: 'media-playlist-shuffle-symbolic'}), style_class:'mpris-shuffle-button'});
-		this._repeatBtn = new St.Button({child: new St.Icon({icon_name: 'media-playlist-consecutive-symbolic'}), style_class:'mpris-repeat-button'});
-
 		this._mediaLength = 0;
 		this._posSlider = new Slider.Slider(0);
 		this._timeLapLbl = new St.Label({style_class:'mpris-time-label', text:'0.00'});
@@ -202,15 +199,12 @@ const MPRISStream = new Lang.Class({
 		this._detailBox.add(this._songLbl);
 		this._detailBox.add(artistBox);
 		this._detailBox.add(albumBox);
-
+		this._sigUpdPos = 0;
 
 		let mediaControls = new St.BoxLayout({style_class: 'mpris-player-controls'});
 		mediaControls.add(this._prevBtn);
 		mediaControls.add(this._playBtn);
 		mediaControls.add(this._nextBtn);
-		mediaControls.add(this._shuffleBtn);
-		mediaControls.add(this._repeatBtn);
-		mediaControls.add(this._fullscreenBtn);
 
 		let innerBox = new St.BoxLayout({vertical:true});
 		innerBox.add(this._detailBox);
@@ -264,9 +258,6 @@ const MPRISStream = new Lang.Class({
 			this._prevBtn.hide();
 			this._nextBtn.hide();
 			this._timeBox.hide();
-			this._shuffleBtn.hide();
-			this._repeatBtn.hide();
-			this._fullscreenBtn.hide();
 			this._detailBox.hide();
 			this._albumArt.hide();
 
@@ -282,9 +273,6 @@ const MPRISStream = new Lang.Class({
 			this._prevBtn.show();
 			this._nextBtn.show();
 			this._timeBox.show();
-			this._shuffleBtn.show();
-			this._repeatBtn.show();
-			this._fullscreenBtn.hide();
 			this._detailBox.show();
 			this._albumArt.show();
 		}
@@ -405,7 +393,8 @@ const MPRISStream = new Lang.Class({
 
 							this._mediaPosition = this._getDBusProperty('org.mpris.MediaPlayer2.Player', 'Position').get_int64();
 							this._mediaRate = this._getDBusProperty('org.mpris.MediaPlayer2.Player', 'Rate').get_double();
-							this._sigUpdPos = Loop.timeout_add_seconds(1, Lang.bind(this, this._updatePosition));
+							if(this._sigUpdPos == 0)
+								this._sigUpdPos = Loop.timeout_add_seconds(1, Lang.bind(this, this._updatePosition));
 						}
 						else {
 							if (this._sigUpdPos != 0) {
@@ -624,8 +613,8 @@ const MPRISStream = new Lang.Class({
 	_setPAProperty: function(property, value){
 		if(value instanceof GLib.Variant)
 			try{
-				this._paDBus.call_sync(null, this._paPath, 'org.freedesktop.DBus.Properties', 'Set',
-					GLib.Variant.new('(ssv)', ['org.PulseAudio.Core1.Stream', property, value]), null, Gio.DBusCallFlags.NONE, -1, null);
+				this._paDBus.call(null, this._paPath, 'org.freedesktop.DBus.Properties', 'Set',
+					GLib.Variant.new('(ssv)', ['org.PulseAudio.Core1.Stream', property, value]), null, Gio.DBusCallFlags.NONE, -1, null, null);
 			} catch(e){
 				log('Laine: Exception setting value for ' +this._paPath +" :: "+e);
 			}
