@@ -11,6 +11,8 @@ const Slider = imports.ui.slider;
 const Loop = imports.mainloop;
 
 const WindowTracker = Shell.WindowTracker.get_default();
+const Me = imports.misc.extensionUtils.getCurrentExtension();
+const StreamMenu = Me.imports.streaMenu;
 
 const PA_MAX = 65536;
 const WATCH_RULE = "type='signal'," +
@@ -130,6 +132,17 @@ const Control = new Lang.Class({
 	}
 
 });
+
+const MPRISStream2 = new Lang.Class({
+	Name: 'MPRISStream',
+	Extends: StreamMenu.StreamBase,
+
+	_init: function(dbusPath, pid, dbus, paconn){
+		
+	}
+
+});
+
 
 const MPRISStream = new Lang.Class({
 	Name: 'MPRISStream',

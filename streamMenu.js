@@ -181,6 +181,7 @@ const StreamBase = new Lang.Class({
 			this.setVolume(value);
 		}));
 
+		this._label.connect('button-press-event', Lang.bind(this, this._raise));
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 	},
 
@@ -323,7 +324,6 @@ const SimpleStream = new Lang.Class({
 				this._app.activate();
 		};
 
-		this._label.connect('button-press-event', Lang.bind(this, this._raise));
 	},
 
 });
