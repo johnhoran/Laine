@@ -94,8 +94,6 @@ const StreamMenu = new Lang.Class({
 						this.addMenuItem(stream);
 						this._streams.length ++;
 					}
-
-
 				}
 			})
 		);
@@ -164,7 +162,7 @@ const StreamBase = new Lang.Class({
 		this.actor.set_track_hover(true);
 		this.actor.set_reactive(true);
 
-		this.actor.add(outerContainer);
+		this.actor.add(outerContainer, {expand:true});
 
 		//------------------------------------------------------------------
 		
@@ -423,7 +421,7 @@ const MPRISControl = new Lang.Class({
 	_onDestroy: function(){
 		this._dbus.signal_unsubscribe(this._sigNOC);
 		this._dbus.call('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "RemoveMatch",
-			GLib.Variant.new('(s)', [rule]), null, Gio.DBusCallFlags.NONE, -1, null, null);
+			GLib.Variant.new('(s)', [WATCH_RULE]), null, Gio.DBusCallFlags.NONE, -1, null, null);
 	}
 
 });
@@ -437,8 +435,9 @@ const MPRISStream2 = new Lang.Class({
 		this._path = dbusPath;
 		this._procID = pid;
 		this._dbus = dbus;
-		this._paPath = null;
 		this._mediaLength = 0;
+
+		this.unsetPAStream();
 
 		this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
 			GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2', 'DesktopEntry']), GLib.VariantType.new("(v)"),
@@ -461,7 +460,6 @@ const MPRISStream2 = new Lang.Class({
 		this._prevBtn = new St.Button({child: new St.Icon({icon_name: 'media-skip-backward-symbolic'}), style_class:'mpris-previous-button'});
 		this._nextBtn = new St.Button({child: new St.Icon({icon_name: 'media-skip-forward-symbolic'}), style_class:'mpris-next-button'});
 
-		
 		this._posSlider = new Slider.Slider(0);
 		this._timeLapLbl = new St.Label({style_class:'mpris-time-label'});
 		this._timeRemLbl = new St.Label({style_class:'mpris-time-label'});
@@ -491,15 +489,36 @@ const MPRISStream2 = new Lang.Class({
 		this._metaDisplay.add(this._albumArt);
 		this._metaDisplay.add(innerBox);
 
-		this._timeBox = new St.BoxLayout({style_class:'mpris-time-container'});
+		this._timeBox = new St.BoxLayout({style_class:'mpris-time-display'});
 		this._timeBox.add(this._timeLapLbl);
 		this._timeBox.add(this._posSlider.actor, {expand:true});
 		this._timeBox.add(this._timeRemLbl);
 
 		this.actor.add(this._metaDisplay);
 		this.actor.add(this._timeBox, {expand:true});
-		this.actor.add_style_class_name('mpris-stream');
 
+		this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+			GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'PlaybackStatus']), GLib.VariantType.new("(v)"),
+			Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
+				let response = conn.call_finish(query).get_child_value(0).unpack().get_string()[0];
+				if(response == 'Playing')
+					this._setStatePlaying();
+				else if(response == 'Paused'){
+					this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+						GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']), GLib.VariantType.new("(v)"),
+						Gio.DBusCallFlags.NONE, -1, null, 
+						Lang.bind(this, function(conn, query){
+							let response = conn.call_finish(query).get_child_value(0).unpack();
+							this._mediaPosition = response.get_int64();
+
+							this._timeLapLbl.text = this._formatSeconds(Math.floor(this._mediaPosition/1000000));
+							this._timeRemLbl.text = '-'+this._formatSeconds(Math.floor((this._mediaLength - this._mediaPosition)/1000000));
+							this._posSlider.setValue(this._mediaPosition/this._mediaLength);
+						})
+					);
+				}
+			})
+		);
 
 		//Signal handlers
 		this._sigPropChange = this._dbus.signal_subscribe(this._path, 'org.freedesktop.DBus.Properties',
@@ -517,7 +536,7 @@ const MPRISStream2 = new Lang.Class({
 
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 
-		this.unsetPAStream();
+		this._label.connect('button-press-event', Lang.bind(this, this._raise));
 	},
 
 		//Async functions
@@ -660,6 +679,28 @@ const MPRISStream2 = new Lang.Class({
 		}
 	},
 
+	_setStatePlaying: function(){
+		this._playBtn.child.icon_name = 'media-playback-pause-symbolic';
+
+		this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+			GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']), GLib.VariantType.new("(v)"),
+			Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
+				let response = conn.call_finish(query).get_child_value(0).unpack();
+				this._mediaPosition = response.get_int64();
+
+				if(this._sigUpdPos == 0)
+					this._sigUpdPos = Loop.timeout_add_seconds(1, Lang.bind(this, this._updatePosition));
+			})
+		);
+		this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+			GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'Rate']), GLib.VariantType.new("(v)"),
+			Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
+				let response = conn.call_finish(query).get_child_value(0).unpack();
+				this._mediaRate = response.get_double();
+			})
+		);
+	},
+
 	_onPropChange: function(conn, sender, object, iface, signal, param, user_data){
 		if(signal == 'PropertiesChanged'){
 			let sIface = param.get_child_value(0).get_string()[0];
@@ -676,25 +717,7 @@ const MPRISStream2 = new Lang.Class({
 					else if(key == 'PlaybackStatus'){
 						let state = val.get_string()[0];
 						if(state == 'Playing'){
-							this._playBtn.child.icon_name = 'media-playback-pause-symbolic';
-
-							this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
-								GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']), GLib.VariantType.new("(v)"),
-								Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
-									let response = conn.call_finish(query).get_child_value(0).unpack();
-									this._mediaPosition = response.get_int64();
-
-									if(this._sigUpdPos == 0)
-										this._sigUpdPos = Loop.timeout_add_seconds(1, Lang.bind(this, this._updatePosition));
-								})
-							);
-							this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
-								GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'Rate']), GLib.VariantType.new("(v)"),
-								Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
-									let response = conn.call_finish(query).get_child_value(0).unpack();
-									this._mediaRate = response.get_double();
-								})
-							);
+							this._setStatePlaying();
 						}
 						else {
 							if (this._sigUpdPos != 0) {
@@ -736,7 +759,6 @@ const MPRISStream2 = new Lang.Class({
 				})
 			);
 		}
-
 	},
 
 	_onControlBtnClick: function(button){
@@ -790,6 +812,37 @@ const MPRISStream2 = new Lang.Class({
 		return ans;
 	},
 
+	_raise: function(){
+		if(this._app == null){
+			this._app = WindowTracker.get_app_from_pid(this._procID);
+
+			if(this._app == null){//Check the tray
+				let trayNotifications = Main.messageTray.getSources();
+				for(let i = 0; i < trayNotifications.length; i++)
+					if(trayNotifications[i].pid == this._procID)
+						this._app = trayNotifications[i].app;
+			}
+
+			if(this._app == null){//try raising a window via dbus
+				this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+					GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2', 'CanRaise']), GLib.VariantType.new("(v)"),
+					Gio.DBusCallFlags.NONE, -1, null, 
+					Lang.bind(this, function(conn, query){
+						let response = conn.call_finish(query).get_child_value(0).unpack();
+						if(response.get_boolean()){
+							this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.mpris.MediaPlayer2", "Raise",
+								null, null, Gio.DBusCallFlags.NONE, -1, null, null);
+							this._app = WindowTracker.get_app_from_pid(this._procID);
+						}
+					})
+				);
+			}
+			
+		}
+		if(this._app != null)
+			this._app.activate();
+	},
+	
 	_onDestroy: function(){
 		this._dbus.signal_unsubscribe(this._sigPropChange);
 		this._dbus.signal_unsubscribe(this._sigSeeked);

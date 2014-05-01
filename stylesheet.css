@@ -59,8 +59,22 @@
 
 .mpris-metadata-display {
 	spacing: 0.5em;
+	/*
 	padding-left: 0.3em;
 	padding-right:0.3em;
+	*/
+	padding-left: 20px;
+	padding-right: 20px;
+	padding-bottom: 0em;
+	padding-top: 0.1em;
+}
+
+.mpris-time-display {
+	spacing:0.1em;
+	padding-left: 20px;
+	padding-right: 20px;
+	padding-bottom: 10px;
+	padding-top: 0.1em;
 }
 
 .mpris-metadata-display:alone {
