@@ -326,45 +326,54 @@ const MPRISControl = new Lang.Class({
 		this._mprisStreams = {};
 		this._mprisStreams.length = 0;
 
-		this._dbus = Gio.bus_get_sync(Gio.BusType.SESSION, null);
-	//	this._dbus = Gio.DBusConnection.new_for_address_sync('unix:path=/tmp/socat-listen', Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT, null, null);
-	//	this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "Hello", null, GLib.VariantType.new("(s)"), Gio.DBusCallFlags.NONE, -1, null);
-
-		this._addMPRISStreams(this._dbus);
-
-		this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "AddMatch",
-			GLib.Variant.new('(s)', [WATCH_RULE]), null, Gio.DBusCallFlags.NONE, -1, null);
-		this._sigNOC = this._dbus.signal_subscribe('org.freedesktop.DBus', "org.freedesktop.DBus", "NameOwnerChanged",
-    		"/org/freedesktop/DBus", null, Gio.DBusSignalFlags.NO_MATCH_RULE, Lang.bind(this, this._onConnChange));
+		Gio.bus_get(Gio.BusType.SESSION, null, Lang.bind(this, this._hdlBusConnection));
 
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 	},
 
-	_addMPRISStreams: function(dbus){
-		let connections = this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "ListNames",
-			null, GLib.VariantType.new("(as)"), Gio.DBusCallFlags.NONE, -1, null);
-		connections = connections.get_child_value(0).unpack();
+	_hdlBusConnection: function(conn, query){
+		this._dbus = Gio.bus_get_finish(query);
+		this._dbus.call('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "ListNames",
+			null, GLib.VariantType.new("(as)"), Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, this._hdlListNames));
 
-		for(let i = 0; i < connections.length; i++){
-			let path = connections[i].get_string()[0];
-			if(path.search('^org.mpris.MediaPlayer2') == -1)
-				continue;
+		this._dbus.call('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "AddMatch",
+			GLib.Variant.new('(s)', [WATCH_RULE]), null, Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(){
+				this._sigNOC = this._dbus.signal_subscribe('org.freedesktop.DBus', "org.freedesktop.DBus", "NameOwnerChanged",
+    				"/org/freedesktop/DBus", null, Gio.DBusSignalFlags.NO_MATCH_RULE, Lang.bind(this, this._onConnChange));
+			}));
+	},
 
-			let pid = this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "GetConnectionUnixProcessID",
-				GLib.Variant.new('(s)', [path]), GLib.VariantType.new("(u)"), Gio.DBusCallFlags.NONE, -1, null);
-			pid = pid.get_child_value(0).get_uint32();
+	_hdlListNames: function(conn, query){
+		let resp = conn.call_finish(query).get_child_value(0);
 
-			if(!(pid in this._mprisStreams)) {
-				let uName = this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "GetNameOwner",
-					GLib.Variant.new('(s)', [path]), GLib.VariantType.new('(s)'), Gio.DBusCallFlags.NONE, -1, null);
-				uName = uName.get_child_value(0).unpack();
-
-				let newStr = new MPRISStream(uName, pid, this._dbus, this._paDBus);
-				this._mprisStreams[pid] = newStr;
-				this.actor.add(newStr.actor);
-				this._mprisStreams.length ++;
-			}
+		for(let i = 0; i < resp.n_children(); i++){
+			let path = resp.get_child_value(i).get_string()[0];
+			if(path.search('^org.mpris.MediaPlayer2') == 0)
+				this._addMPRISStream(path, null);
 		}
+	},
+
+	_addMPRISStream: function(path, uname){
+		this._dbus.call('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "GetConnectionUnixProcessID",
+			GLib.Variant.new('(s)', [path]), GLib.VariantType.new("(u)"), Gio.DBusCallFlags.NONE, -1, null,
+			Lang.bind(this, function(conn, query){
+				let pid = conn.call_finish(query).get_child_value(0).get_uint32();
+				if(!(pid in this._mprisStreams)){
+					if(uname == null){
+						uname = this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "GetNameOwner",
+							GLib.Variant.new('(s)', [path]), GLib.VariantType.new('(s)'), Gio.DBusCallFlags.NONE, -1, null);
+						uname = uname.get_child_value(0).unpack();
+					}
+
+					if(uname != null){
+						let nStr = new MPRISStream(uname, pid, this._dbus, this._paDBus);
+						this._mprisStreams[pid] = nStr;
+						this.actor.add(nStr.actor);
+						this._mprisStreams.length ++;
+					}
+				}
+			})
+		);
 	},
 
 	removePAStream:function(path){
@@ -394,16 +403,7 @@ const MPRISControl = new Lang.Class({
 		if(add){
 			let uName = param.get_child_value(2).get_string()[0];
 
-			let pid = this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "GetConnectionUnixProcessID",
-				GLib.Variant.new('(s)', [uName]), GLib.VariantType.new("(u)"), Gio.DBusCallFlags.NONE, -1, null);
-			pid = pid.get_child_value(0).get_uint32();
-
-			if(!(pid in this._mprisStreams)){
-				let newStr = new MPRISStream(uName, pid, this._dbus, this._paDBus);
-				this._mprisStreams[pid] = newStr;
-				this.actor.add(newStr.actor);
-				this._mprisStreams.length ++;
-			}
+			this._addMPRISStream(path, uName);
 		}
 		else {
 			for(let k in this._mprisStreams){
@@ -419,8 +419,8 @@ const MPRISControl = new Lang.Class({
 
 	_onDestroy: function(){
 		this._dbus.signal_unsubscribe(this._sigNOC);
-		this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "RemoveMatch",
-			GLib.Variant.new('(s)', [rule]), null, Gio.DBusCallFlags.NONE, -1, null);
+		this._dbus.call('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "RemoveMatch",
+			GLib.Variant.new('(s)', [rule]), null, Gio.DBusCallFlags.NONE, -1, null, null);
 	}
 
 });
@@ -438,28 +438,9 @@ const MPRISStream = new Lang.Class({
 		this._paDBus = paconn;
 		this._paPath = null;
 
-
 		this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
 			GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2', 'DesktopEntry']), GLib.VariantType.new("(v)"),
 			Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, this._hdlDesktopEntry));
-
-/*
-		let dEntry = this._getDBusProperty('org.mpris.MediaPlayer2', 'DesktopEntry').get_string()[0];
-		let icon, name;
-		if(dEntry != ''){
-			let app = Shell.AppSystem.get_default().lookup_app(dEntry+".desktop");
-			if(app != null){
-				let info = app.get_app_info();
-				name = info.get_name();
-				icon = new St.Icon({style_class: 'simple-stream-icon'});
-				icon.set_gicon(info.get_icon());
-			}
-		} 
-
-		if(name == null){
-			name = this._getDBusProperty('org.mpris.MediaPlayer2', 'Identity').get_string()[0];
-			icon = new St.Icon({icon_name: 'package_multimedia', style_class: 'simple-stream-icon'});
-		}*/
 
 		this._muteBtn = new St.Button();
 		this._label = new St.Label({style_class: 'simple-stream-label', reactive: true});
@@ -566,20 +547,16 @@ const MPRISStream = new Lang.Class({
 			icon = new St.Icon({icon_name: 'package_multimedia', style_class: 'simple-stream-icon'});
 			this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
 				GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2', 'Identity']), GLib.VariantType.new("(v)"),
-				Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, this._hdlDesktopEntry));
+				Gio.DBusCallFlags.NONE, -1, null, 
+				Lang.bind(this, function(conn, query){
+					let res = conn.call_finish(query).get_child_value(0).get_string()[0];
+					this.label.text = res;
+				})
+			);
 		}
 
 		this._muteBtn.child = icon;
 	},
-
-	_hdlIdentity: function(conn, result){
-		let res = conn.call_finish(result);
-		res = res.get_child_value(0).unpack();
-
-		let identity = result.get_string()[0];
-		this.label.text = identity;
-	},
-
 
 	/*
 	* 0 - play button is the only control shown.
