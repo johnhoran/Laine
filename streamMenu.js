@@ -12,9 +12,14 @@ const Slider = imports.ui.slider;
 const WindowTracker = Shell.WindowTracker.get_default();
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 
-const MPRISStream = Me.imports.mprisStream;
 
 const PA_MAX = 65536;
+const WATCH_RULE = "type='signal'," +
+		"sender='org.freedesktop.DBus'," +
+		"interface='org.freedesktop.DBus'," +
+		"member='NameOwnerChanged'," +
+		"path='/org/freedesktop/DBus'," +
+		"arg0namespace='org.mpris.MediaPlayer2'";
 
 const StreamMenu = new Lang.Class({
 	Name: 'StreamMenu',
@@ -24,7 +29,7 @@ const StreamMenu = new Lang.Class({
 		this.parent();
 		this._paDBus = paconn;
 
-	//	this._mprisControl = new MPRISStream.Control(this, this._paDBus);
+		this._mprisControl = new MPRISControl(this, this._paDBus);
 
 		this._streams = {};
 		this._delegatedStreams = {};
@@ -308,5 +313,127 @@ const SimpleStream = new Lang.Class({
 				this._app.activate();
 		}));
 	}
+});
+
+const MPRISControl = new Lang.Class({
+	Name: 'MPRISControl',
+
+	_init: function(parent, paconn){
+		this._parent = parent;
+		this._paDBus = paconn
+		this.actor = parent.actor;
+
+		this._mprisStreams = {};
+		this._mprisStreams.length = 0;
+
+		this._dbus = Gio.bus_get_sync(Gio.BusType.SESSION, null);
+	//	this._dbus = Gio.DBusConnection.new_for_address_sync('unix:path=/tmp/socat-listen', Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT, null, null);
+	//	this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "Hello", null, GLib.VariantType.new("(s)"), Gio.DBusCallFlags.NONE, -1, null);
+
+		this._addMPRISStreams(this._dbus);
+
+		this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "AddMatch",
+			GLib.Variant.new('(s)', [WATCH_RULE]), null, Gio.DBusCallFlags.NONE, -1, null);
+		this._sigNOC = this._dbus.signal_subscribe('org.freedesktop.DBus', "org.freedesktop.DBus", "NameOwnerChanged",
+    		"/org/freedesktop/DBus", null, Gio.DBusSignalFlags.NO_MATCH_RULE, Lang.bind(this, this._onConnChange));
+
+		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
+	},
+
+	_addMPRISStreams: function(dbus){
+		let connections = this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "ListNames",
+			null, GLib.VariantType.new("(as)"), Gio.DBusCallFlags.NONE, -1, null);
+		connections = connections.get_child_value(0).unpack();
+
+		for(let i = 0; i < connections.length; i++){
+			let path = connections[i].get_string()[0];
+			if(path.search('^org.mpris.MediaPlayer2') == -1)
+				continue;
+
+			let pid = this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "GetConnectionUnixProcessID",
+				GLib.Variant.new('(s)', [path]), GLib.VariantType.new("(u)"), Gio.DBusCallFlags.NONE, -1, null);
+			pid = pid.get_child_value(0).get_uint32();
+
+			if(!(pid in this._mprisStreams)) {
+				let uName = this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "GetNameOwner",
+					GLib.Variant.new('(s)', [path]), GLib.VariantType.new('(s)'), Gio.DBusCallFlags.NONE, -1, null);
+				uName = uName.get_child_value(0).unpack();
+
+				let newStr = new MPRISStream(uName, pid, this._dbus, this._paDBus);
+				this._mprisStreams[pid] = newStr;
+				this.actor.add(newStr.actor);
+				this._mprisStreams.length ++;
+			}
+		}
+	},
+
+	removePAStream:function(path){
+		for(let pid in this._mprisStreams){
+			if(this._mprisStreams[pid]._paPath == path){
+				this._mprisStreams[pid].unsetPAStream();
+				break;
+			}
+		}
+	},
+
+	isMPRISStream: function(pid, path){
+		if(pid in this._mprisStreams){
+			this._mprisStreams[pid].setPAStream(path);
+			return true;
+		}
+		return false;
+	},
+
+	_onConnChange: function(conn, sender, object, iface, signal, param, user_data){
+		let path = param.get_child_value(0).get_string()[0];
+		let add = (param.get_child_value(1).get_string()[0] == '');
+
+		if(path.search('^org.mpris.MediaPlayer2') != 0)
+			return;
+
+		if(add){
+			let uName = param.get_child_value(2).get_string()[0];
+
+			let pid = this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "GetConnectionUnixProcessID",
+				GLib.Variant.new('(s)', [uName]), GLib.VariantType.new("(u)"), Gio.DBusCallFlags.NONE, -1, null);
+			pid = pid.get_child_value(0).get_uint32();
+
+			if(!(pid in this._mprisStreams)){
+				let newStr = new MPRISStream(uName, pid, this._dbus, this._paDBus);
+				this._mprisStreams[pid] = newStr;
+				this.actor.add(newStr.actor);
+				this._mprisStreams.length ++;
+			}
+		}
+		else {
+			for(let k in this._mprisStreams){
+				let uName = param.get_child_value(1).get_string()[0];
+				if(k != 'length' && this._mprisStreams[k]._path == uName){
+					this._mprisStreams[k].destroy();
+					delete this._mprisStreams[k];
+					break;
+				}
+			}
+		}
+	},
+
+	_onDestroy: function(){
+		this._dbus.signal_unsubscribe(this._sigNOC);
+		this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "RemoveMatch",
+			GLib.Variant.new('(s)', [rule]), null, Gio.DBusCallFlags.NONE, -1, null);
+	}
 
 });
+
+const MPRISStream = new Lang.Class({
+	Name: 'MPRISStream',
+	Extends: StreamBase,
+
+	_init: function(dbusPath, pid, dbus, paconn){
+		this.parent(paconn);
+		this._path = dbusPath;
+		this._procID = pid;
+		this._dbus = dbus;
+		log('A'+this.actor);
+	}
+};
