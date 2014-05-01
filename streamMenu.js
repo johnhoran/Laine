@@ -8,6 +8,7 @@ const PopupMenu = imports.ui.popupMenu;
 const Shell = imports.gi.Shell;
 const Main = imports.ui.main;
 const Slider = imports.ui.slider;
+const Loop = imports.mainloop;
 
 const WindowTracker = Shell.WindowTracker.get_default();
 const Me = imports.misc.extensionUtils.getCurrentExtension();
@@ -151,16 +152,19 @@ const StreamBase = new Lang.Class({
 		//------------------------------------------------------------------
 		//Laying out components
 		let container = new St.BoxLayout({vertical:true});
-		container.add_actor(this._label);
-		container.add_actor(this._volSlider.actor,{expand:true});
+		container.add(this._label);
+		container.add(this._volSlider.actor,{expand:true});
 
-		this.actor.add_style_class_name('stream');
+		let outerContainer = new St.BoxLayout();
+		outerContainer.add(this._muteBtn);
+		outerContainer.add(container, {expand:true});
+		outerContainer.add_style_class_name('stream');
+
 		this.actor.set_vertical(false);
 		this.actor.set_track_hover(true);
 		this.actor.set_reactive(true);
 
-		this.actor.add(this._muteBtn);
-		this.actor.add(container, {expand:true});
+		this.actor.add(outerContainer);
 
 		//------------------------------------------------------------------
 		
@@ -203,13 +207,13 @@ const StreamBase = new Lang.Class({
 	},
 
 	setVolume: function(volume){
-		if(typeof volume === 'boolean'){
+		if(typeof volume === 'boolean' && this._paPath != null){
 			let val = GLib.Variant.new_boolean(volume);
 			this._paDBus.call(null, this._paPath, 'org.freedesktop.DBus.Properties', 'Set',
 				GLib.Variant.new('(ssv)', ['org.PulseAudio.Core1.Stream', 'Mute', val]), null, 
 				Gio.DBusCallFlags.NONE, -1, null, null);
 		} 	
-		else if(typeof volume === 'number'){
+		else if(typeof volume === 'number' && this._paPath != null){
 			if(volume > 1) volume = 1;
 			let max = this._volVariant.get_child_value(0).get_uint32();
 			for(let i = 1; i < this._volVariant.n_children(); i++){
@@ -366,7 +370,7 @@ const MPRISControl = new Lang.Class({
 					}
 
 					if(uname != null){
-						let nStr = new MPRISStream(uname, pid, this._dbus, this._paDBus);
+						let nStr = new MPRISStream2(uname, pid, this._dbus, this._paDBus);
 						this._mprisStreams[pid] = nStr;
 						this.actor.add(nStr.actor);
 						this._mprisStreams.length ++;
@@ -402,7 +406,6 @@ const MPRISControl = new Lang.Class({
 
 		if(add){
 			let uName = param.get_child_value(2).get_string()[0];
-
 			this._addMPRISStream(path, uName);
 		}
 		else {
@@ -425,49 +428,43 @@ const MPRISControl = new Lang.Class({
 
 });
 
-
-const MPRISStream = new Lang.Class({
+const MPRISStream2 = new Lang.Class({
 	Name: 'MPRISStream',
-	Extends: PopupMenu.PopupMenuSection,
+	Extends: StreamBase,
 
 	_init: function(dbusPath, pid, dbus, paconn){
-		this.parent();
+		this.parent(paconn);
 		this._path = dbusPath;
 		this._procID = pid;
 		this._dbus = dbus;
-		this._paDBus = paconn;
 		this._paPath = null;
+		this._mediaLength = 0;
 
 		this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
 			GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2', 'DesktopEntry']), GLib.VariantType.new("(v)"),
 			Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, this._hdlDesktopEntry));
-
-		this._muteBtn = new St.Button();
-		this._label = new St.Label({style_class: 'simple-stream-label', reactive: true});
-		this._volSlider = new Slider.Slider(0);
 
 		this._songLbl = new St.Label({style_class:'mpris-meta-title'});
 		this._artistLbl = new St.Label({style_class:'mpris-meta-info'});
 		this._albumLbl = new St.Label({style_class:'mpris-meta-info'});
 		this._albumArt = new St.Icon({style_class:'mpris-album-art'});
 
+		this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+			GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'Metadata']), GLib.VariantType.new("(v)"),
+			Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
+				let response = conn.call_finish(query).get_child_value(0).unpack();
+				this._updateMetadata(response);
+			})
+		);
+
 		this._playBtn = new St.Button({child: new St.Icon({icon_name: 'media-playback-start-symbolic'}), style_class:'mpris-play-button'});
 		this._prevBtn = new St.Button({child: new St.Icon({icon_name: 'media-skip-backward-symbolic'}), style_class:'mpris-previous-button'});
 		this._nextBtn = new St.Button({child: new St.Icon({icon_name: 'media-skip-forward-symbolic'}), style_class:'mpris-next-button'});
 
-		this._mediaLength = 0;
+		
 		this._posSlider = new Slider.Slider(0);
-		this._timeLapLbl = new St.Label({style_class:'mpris-time-label', text:'0.00'});
-		this._timeRemLbl = new St.Label({style_class:'mpris-time-label', text:'-0.00'});
-
-
-		//Laying out the components
-		let volBoxI = new St.BoxLayout({vertical:true});
-		volBoxI.add(this._label);
-		volBoxI.add(this._volSlider.actor,{expand:true});
-		let volBoxO = new St.BoxLayout();
-		volBoxO.add(this._muteBtn);
-		volBoxO.add(volBoxI, {expand:true});
+		this._timeLapLbl = new St.Label({style_class:'mpris-time-label'});
+		this._timeRemLbl = new St.Label({style_class:'mpris-time-label'});
 
 		let artistBox = new St.BoxLayout();
 		artistBox.add(new St.Label({text:'by', style_class:'mpris-label-subtext'}));
@@ -499,38 +496,31 @@ const MPRISStream = new Lang.Class({
 		this._timeBox.add(this._posSlider.actor, {expand:true});
 		this._timeBox.add(this._timeRemLbl);
 
-
-		this.actor.add(volBoxO, {expand:true});
 		this.actor.add(this._metaDisplay);
-		//this.actor.add(mediaControls);
-		//this.actor.add(this._playorderControls);
-		//this.actor.add(this._fullscreenBtn);
 		this.actor.add(this._timeBox, {expand:true});
 		this.actor.add_style_class_name('mpris-stream');
 
-		this._updateMetadata(this._getDBusProperty('org.mpris.MediaPlayer2.Player', 'Metadata'));
 
-		//Add Listeners
-		this._sigPropChange = dbus.signal_subscribe(this._path, 'org.freedesktop.DBus.Properties',
+		//Signal handlers
+		this._sigPropChange = this._dbus.signal_subscribe(this._path, 'org.freedesktop.DBus.Properties',
 			'PropertiesChanged', '/org/mpris/MediaPlayer2', null, Gio.DBusSignalFlags.NONE, 
 			Lang.bind(this, this._onPropChange), null);
-		this._sigSeeked = dbus.signal_subscribe(this._path, 'org.mpris.MediaPlayer2.Player',
+		this._sigSeeked = this._dbus.signal_subscribe(this._path, 'org.mpris.MediaPlayer2.Player',
 			'Seeked', '/org/mpris/MediaPlayer2', null, Gio.DBusSignalFlags.NONE, 
 			Lang.bind(this, this._onPropChange), null);
-		this._volSlider.connect('value-changed', Lang.bind(this, this._onVolSliderChange));
+
 		this._posSlider.connect('value-changed', Lang.bind(this, this._onPosSliderChange));
+
 		this._playBtn.connect('clicked', Lang.bind(this, this._onControlBtnClick));
 		this._nextBtn.connect('clicked', Lang.bind(this, this._onControlBtnClick));
 		this._prevBtn.connect('clicked', Lang.bind(this, this._onControlBtnClick));
 
-		this._muteBtn.connect('clicked', Lang.bind(this, this._onMuteClick));
-
-
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
+
+		this.unsetPAStream();
 	},
 
-
-	//Async functions
+		//Async functions
 	_hdlDesktopEntry: function(conn, result){
 		let res = conn.call_finish(result);
 		res = res.get_child_value(0).unpack();
@@ -558,9 +548,6 @@ const MPRISStream = new Lang.Class({
 		this._muteBtn.child = icon;
 	},
 
-	/*
-	* 0 - play button is the only control shown.
-	*/
 	setDisplayState: function(state){
 		if(state == 0){
 			this._prevBtn.hide();
@@ -584,36 +571,13 @@ const MPRISStream = new Lang.Class({
 			this._detailBox.show();
 			this._albumArt.show();
 		}
-
 	},
 
 	setPAStream: function(path){
-		this._paPath = path;
+		this._volSlider.disconnect(this._sigFVol);
+		this._muteBtn.disconnect(this._sigFMute);
 
-		this._volVariant = this._getPAProperty('Volume');; //Save this so I can maintain balance when changing volumes;
-		if(this._volVariant == null){
-			this._volSlider.setValue(0);
-			this._muteVal = true;
-		}
-		else {
-			this._muteVal = this._getPAProperty('Mute').get_boolean();
-			if(this._muteVal)
-				this._volSlider.setValue(0);
-			else {
-
-				let maxVal = this._volVariant.get_child_value(0).get_uint32();
-				for(let i = 1; i < this._volVariant.n_children(); i++){
-					let val = this._volVariant.get_child_value(i).get_uint32();
-					if(val > maxVal) maxVal = val;
-				}
-				this._volSlider.setValue(maxVal/PA_MAX);
-			}
-		}
-
-		this._sigVol = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Stream', 'VolumeUpdated',
-			this._paPath, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeEvent), null );
-		this._sigMute = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Stream', 'MuteUpdated',
-			this._paPath, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeEvent), null );
+		this.setPAPath(path);
 	},
 
 	unsetPAStream: function(){
@@ -623,7 +587,23 @@ const MPRISStream = new Lang.Class({
 		}
 
 		this._paPath = null;
+
+		this._sigFVol = this._volSlider.connect('value-changed', 
+			Lang.bind(this, function(slider, value, property){
+				this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Set",
+					GLib.Variant.new('(ssv)', ['org.mpris.MediaPlayer2.Player', 'Volume', GLib.Variant.new_double(value)]), 
+					null, Gio.DBusCallFlags.NONE, -1, null, null);
+			})
+		);
+		this._sigFMute = this._muteBtn.connect('clicked', Lang.bind(this, function(){
+				this._muteVal = !this._muteVal;
+				this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Set",
+					GLib.Variant.new('(ssv)', ['org.mpris.MediaPlayer2.Player', 'Volume', GLib.Variant.new_double(this._muteVal?0:this._appVol)]), 
+					null, Gio.DBusCallFlags.NONE, -1, null, null);
+			})
+		);
 	},
+
 
 	_updateMetadata: function(meta){
 		if(meta.n_children() == 0)
@@ -680,7 +660,6 @@ const MPRISStream = new Lang.Class({
 		}
 	},
 
-
 	_onPropChange: function(conn, sender, object, iface, signal, param, user_data){
 		if(signal == 'PropertiesChanged'){
 			let sIface = param.get_child_value(0).get_string()[0];
@@ -699,10 +678,23 @@ const MPRISStream = new Lang.Class({
 						if(state == 'Playing'){
 							this._playBtn.child.icon_name = 'media-playback-pause-symbolic';
 
-							this._mediaPosition = this._getDBusProperty('org.mpris.MediaPlayer2.Player', 'Position').get_int64();
-							this._mediaRate = this._getDBusProperty('org.mpris.MediaPlayer2.Player', 'Rate').get_double();
-							if(this._sigUpdPos == 0)
-								this._sigUpdPos = Loop.timeout_add_seconds(1, Lang.bind(this, this._updatePosition));
+							this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+								GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']), GLib.VariantType.new("(v)"),
+								Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
+									let response = conn.call_finish(query).get_child_value(0).unpack();
+									this._mediaPosition = response.get_int64();
+
+									if(this._sigUpdPos == 0)
+										this._sigUpdPos = Loop.timeout_add_seconds(1, Lang.bind(this, this._updatePosition));
+								})
+							);
+							this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+								GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'Rate']), GLib.VariantType.new("(v)"),
+								Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
+									let response = conn.call_finish(query).get_child_value(0).unpack();
+									this._mediaRate = response.get_double();
+								})
+							);
 						}
 						else {
 							if (this._sigUpdPos != 0) {
@@ -736,8 +728,13 @@ const MPRISStream = new Lang.Class({
 			}
 		} else if(signal == 'Seeked'){
 			//Have to manually get the time as banshee doesn't send it.
-			this._mediaPosition = this._getDBusProperty('org.mpris.MediaPlayer2.Player', 'Position').get_int64();
-			
+			this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+				GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']), GLib.VariantType.new("(v)"),
+				Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
+					let response = conn.call_finish(query).get_child_value(0).unpack();
+					this._mediaPosition = response.get_int64();
+				})
+			);
 		}
 
 	},
@@ -755,58 +752,6 @@ const MPRISStream = new Lang.Class({
 			this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.mpris.MediaPlayer2.Player", "Next",
 				null, null, Gio.DBusCallFlags.NONE, -1, null, null);
 		}
-
-	},
-
-	_onMuteClick: function(){
-		let mute = !this._muteVal;
-
-		if(this._paPath != null)
-			this._setPAProperty('Mute', GLib.Variant.new_boolean(mute));
-		else
-			this._setDBusProperty('org.mpris.MediaPlayer2.Player', 'Volume', GLib.Variant.new_double(mute?0:this._appVol));
-		this._muteVal = mute;
-	},
-
-	_onVolSliderChange: function(slider, value, property){
-		if(this._paPath != null){ //Run it through pulse audio.	
-			if(!(this._muteVal && value == 0)){
-
-				let startV = this._volVariant;
-
-				let maxVal = startV.get_child_value(0).get_uint32();
-				for(let i = 1; i < startV.n_children(); i++){
-					let val = startV.get_child_value(i).get_uint32();
-					if(val > maxVal) maxVal = val;
-				}
-
-				let target = value * PA_MAX;
-				if(target != maxVal){ //Otherwise no change
-					let targetValues = new Array();
-					for(let i = 0; i < startV.n_children(); i++){
-						let newVal;
-						if(maxVal == 0)
-							newVal = target;
-						else { //To maintain any balance the user has set.
-							let oldVal = startV.get_child_value(i).get_uint32();
-							newVal = (oldVal/maxVal)*target;
-						}
-						newVal = Math.round(newVal);
-						targetValues[i] = GLib.Variant.new_uint32(newVal);
-					}
-
-					let prop = GLib.Variant.new_array(null, targetValues);
-					//this._volVariant = prop;
-
-					this._setPAProperty('Volume', prop);
-					if(this._muteVal)
-						this._setPAProperty('Mute', GLib.Variant.new_boolean(false));
-				}
-			}
-		} else {
-			this._setDBusProperty('org.mpris.MediaPlayer2.Player', 'Volume', GLib.Variant.new_double(value));
-		}
-
 	},
 
 	_onPosSliderChange: function(slider, value, property){
@@ -816,42 +761,6 @@ const MPRISStream = new Lang.Class({
 					GLib.Variant.new('(ox)', [this._mediaID, position]), null,
 					Gio.DBusCallFlags.NONE, -1, null, null );
 		}
-	},
-
-	_onVolumeEvent: function(conn, sender, object, iface, signal, param, user_data){
-		if(signal == 'MuteUpdated'){
-			this._muteVal = param.get_child_value(0).get_boolean();
-
-			if(this._muteVal)
-				this._volSlider.setValue(0);
-			else {
-				let max = this._volVariant.get_child_value(0).get_uint32();
-				for(let i = 1; i < this._volVariant.n_children(); i++){
-					let val = this._volVariant.get_child_value(i).get_uint32();
-					if(max < val) max = val;
-				}
-				this._volSlider.setValue(max/PA_MAX);
-			}
-		}
-		else if(signal == 'VolumeUpdated'){
-			let vals = param.get_child_value(0);
-			let startV = this._volVariant;
-
-			let oldMax = startV.get_child_value(0).get_uint32();
-			let newMax = vals.get_child_value(0).get_uint32();
-			for(let i = 1; i < vals.n_children; i++){
-				let oVal = startV.get_child_value(i).get_uint32();
-				let nVal = vals[i].get_uint32();
-
-				if(oVal > oldMax) oldMax = oVal;
-				if(nVal > newMax) newMax = nVal;
-			}
-
-			if(oldMax != newMax){ //Otherwise there is no change
-				this._volVariant = vals;
-				this._volSlider.setValue(newMax / PA_MAX);
-			}
-		} 
 	},
 
 	_updatePosition: function(){
@@ -881,63 +790,12 @@ const MPRISStream = new Lang.Class({
 		return ans;
 	},
 
-	_getDBusProperty: function(iface, property){
-		try{
-			let resp = this._dbus.call_sync(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
-				GLib.Variant.new('(ss)', [iface, property]), GLib.VariantType.new("(v)"),
-				Gio.DBusCallFlags.NONE, -1, null);
-			return resp.get_child_value(0).unpack();
-		} catch(e) {
-			log('Laine: Exception getting value for ' +this._paPath +" :: "+e);
-			return null;
-		}
-	},
-
-	_setDBusProperty: function(iface, property, value){
-		if(value instanceof GLib.Variant)
-			try{
-				this._dbus.call_sync(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Set",
-					GLib.Variant.new('(ssv)', [iface, property, value]), null,
-					Gio.DBusCallFlags.NONE, -1, null);
-				} catch(e){
-				log('Laine: Exception setting value for ' +this._paPath +" :: "+e);
-			}
-
-	},
-
-
-	_getPAProperty: function(property){
-		try{
-			let response = this._paDBus.call_sync(null, this._paPath, 'org.freedesktop.DBus.Properties', 'Get',
-				GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Stream', property]), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
-
-			return response.get_child_value(0).unpack();
-		} catch(e) {
-			log('Laine: Exception getting value for ' +this._paPath +" :: "+e);
-			return null;
-		}
-	},
-
-	_setPAProperty: function(property, value){
-		if(value instanceof GLib.Variant)
-			try{
-				this._paDBus.call(null, this._paPath, 'org.freedesktop.DBus.Properties', 'Set',
-					GLib.Variant.new('(ssv)', ['org.PulseAudio.Core1.Stream', property, value]), null, Gio.DBusCallFlags.NONE, -1, null, null);
-			} catch(e){
-				log('Laine: Exception setting value for ' +this._paPath +" :: "+e);
-			}
-	},
-
 	_onDestroy: function(){
+		this._dbus.signal_unsubscribe(this._sigPropChange);
+		this._dbus.signal_unsubscribe(this._sigSeeked);
 		if(this._paPath){
 			this._paDBus.signal_unsubscribe(this._sigVol);
 			this._paDBus.signal_unsubscribe(this._sigMute);
 		}
 	}
 });
-
-
-
-
-
-
