@@ -26,12 +26,13 @@ const SinkMenu = new Lang.Class({
 			children[i].destroy();
 		this.actor.remove_actor(this._expandBtn);
 
-		this._paDBusConnection = paconn;
+		this._paDBus = paconn;
 		this._sinks = {};
 		this._sinks.length = 0;
 
 		let sinks = this.getCurrentSinks();
 		for(let i = 0; i < sinks.length; i++){
+			this._addSink(sinks[i]);
 			let properties = this._getPAProperty(sinks[i], 'org.PulseAudio.Core1.Device', 'PropertyList');
 			let name = '';
 
@@ -83,17 +84,17 @@ const SinkMenu = new Lang.Class({
 		this._slider.connect('drag-end', Lang.bind(this, this._notifyVolumeChange));
     	muteBtn.connect('clicked', Lang.bind(this, this._onMuteClick));
 
-		this._sigVol = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'VolumeUpdated',
+		this._sigVol = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'VolumeUpdated',
 			this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
-		this._sigMute = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'MuteUpdated',
+		this._sigMute = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'MuteUpdated',
 			this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
-		this._sigPort = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
+		this._sigPort = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
 			this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onPortChanged), null );
-		this._sigFall = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'FallbackSinkUpdated',
+		this._sigFall = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'FallbackSinkUpdated',
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onSinkChange), null );
-		this._sigSkA = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewSink',
+		this._sigSkA = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewSink',
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onSinkChange), null );
-		this._sigSkR = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1', 'SinkRemoved',
+		this._sigSkR = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'SinkRemoved',
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onSinkChange), null );
 		
 	},
@@ -158,7 +159,7 @@ const SinkMenu = new Lang.Class({
 
 	_getPAProperty: function(path, iface, property){
 		try{
-			let response = this._paDBusConnection.call_sync(null, path, 'org.freedesktop.DBus.Properties', 'Get',
+			let response = this._paDBus.call_sync(null, path, 'org.freedesktop.DBus.Properties', 'Get',
 				GLib.Variant.new('(ss)', [iface, property]), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
 			return response.get_child_value(0).unpack();
 		} catch(e){
@@ -170,7 +171,7 @@ const SinkMenu = new Lang.Class({
 	_setPAProperty: function(path, iface, property, value){
 		if(value instanceof GLib.Variant)
 			try{
-				this._paDBusConnection.call_sync(null, path, 'org.freedesktop.DBus.Properties', 'Set',
+				this._paDBus.call_sync(null, path, 'org.freedesktop.DBus.Properties', 'Set',
 					GLib.Variant.new('(ssv)', [iface, property, value]), null, Gio.DBusCallFlags.NONE, -1, null);
 			} catch(e){
 				log('Laine: Exception getting value :: '+e);
@@ -263,15 +264,15 @@ const SinkMenu = new Lang.Class({
 			this._outputSink = addr;
 			this._sinks[this._outputSink].setOrnament(PopupMenu.Ornament.DOT);
 
-			this._paDBusConnection.signal_unsubscribe(this._sigVol);
-			this._paDBusConnection.signal_unsubscribe(this._sigMute);
-			this._paDBusConnection.signal_unsubscribe(this._sigPort);
+			this._paDBus.signal_unsubscribe(this._sigVol);
+			this._paDBus.signal_unsubscribe(this._sigMute);
+			this._paDBus.signal_unsubscribe(this._sigPort);
 
-			this._sigVol = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'VolumeUpdated',
+			this._sigVol = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'VolumeUpdated',
 				this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
-			this._sigMute = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'MuteUpdated',
+			this._sigMute = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'MuteUpdated',
 				this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
-			this._sigPort = this._paDBusConnection.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
+			this._sigPort = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
 				this._outputSink, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onPortChanged), null );
 
 
@@ -321,6 +322,16 @@ const SinkMenu = new Lang.Class({
 		}
 	},
 
+	_addSink: function(path){
+		this._paDBus.call(null, path, 'org.freedesktop.DBus.Properties', 'Get',
+			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'PropertyList']), 
+			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
+				let response = conn.call_finish(query).get_child_value(0).unpack();
+				log(response);
+			})
+		);
+	},
+
 	_onPortChanged: function(conn, sender, object, iface, signal, param, user_data){
 		let desc = this._getPAProperty(param.get_child_value(0).get_string()[0], 'org.PulseAudio.Core1.DevicePort', 'Description');
 		desc = desc.get_string()[0];
@@ -334,7 +345,7 @@ const SinkMenu = new Lang.Class({
 		for(let i = 0; i < streams.n_children(); i++){
 			let sPath = streams.get_child_value(i).get_string()[0];
 
-			this._paDBusConnection.call_sync(null, sPath, 'org.PulseAudio.Core1.Stream', 'Move',
+			this._paDBus.call_sync(null, sPath, 'org.PulseAudio.Core1.Stream', 'Move',
 				GLib.Variant.new('(o)', [item._sinkPath]), null, Gio.DBusCallFlags.NONE, -1, null);
 		}
 	},
@@ -348,12 +359,12 @@ const SinkMenu = new Lang.Class({
 	},
 
 	_onDestroy: function(){
-		this._paDBusConnection.signal_unsubscribe(this._sigVol);
-		this._paDBusConnection.signal_unsubscribe(this._sigMute);
-		this._paDBusConnection.signal_unsubscribe(this._sigPort);
-		this._paDBusConnection.signal_unsubscribe(this._sigFall);
-		this._paDBusConnection.signal_unsubscribe(this._sigSkA);
-		this._paDBusConnection.signal_unsubscribe(this._sigSkR);
+		this._paDBus.signal_unsubscribe(this._sigVol);
+		this._paDBus.signal_unsubscribe(this._sigMute);
+		this._paDBus.signal_unsubscribe(this._sigPort);
+		this._paDBus.signal_unsubscribe(this._sigFall);
+		this._paDBus.signal_unsubscribe(this._sigSkA);
+		this._paDBus.signal_unsubscribe(this._sigSkR);
 	}
 
 });
