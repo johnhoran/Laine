@@ -24,18 +24,16 @@ const StreamMenu = new Lang.Class({
 		this.parent();
 		this._paDBus = paconn;
 
-		this._mprisControl = new MPRISStream.Control(this, this._paDBus);
+	//	this._mprisControl = new MPRISStream.Control(this, this._paDBus);
 
 		this._streams = {};
 		this._delegatedStreams = {};
 		this._streams.length = 0;
 
-		let streams = this.getCurrentStreams();
-		for(let i = 0; i < streams.length; i++)
-			this._addPAStream(streams[i]);
-/*
-		if(this._streams.length == 0)
-				this.actor.hide();*/
+		//Add any existing streams
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.freedesktop.DBus.Properties', 'Get',
+			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', 'PlaybackStreams']), 
+			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, this._hdlAddStreams));
 
 		//Add signal handlers
 		this._sigNewStr = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewPlaybackStream',
@@ -46,68 +44,55 @@ const StreamMenu = new Lang.Class({
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 	},
 
-	getCurrentStreams: function(){
-		let response = this._paDBus.call_sync(null, '/org/pulseaudio/core1', 'org.freedesktop.DBus.Properties', 'Get',
-			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', 'PlaybackStreams']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
-
-		let streams = response.get_child_value(0).unpack();
-
-		let ans = new Array();
-		for(let i = 0; i < streams.n_children(); i++){
-			ans[i] = streams.get_child_value(i).get_string()[0];
-		}
-
-		return ans;
-	},
-
-	getPAStreamInformation: function(path){
-		let properties;
-		try{
-			let response = this._paDBus.call_sync(null, path, 'org.freedesktop.DBus.Properties', 'Get',
-				GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Stream', 'PropertyList']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null);
-
-			properties = response.get_child_value(0).unpack();
-		} catch(e){
-			log("Laine: exception when conneting to PA DBus "+e);
-			return null;
-		}
-
-		let ans = {};
-		if(properties != null)
-			for(let i = 0; i < properties.n_children(); i++){
-				let [index, value] = properties.get_child_value(i).unpack();
-				let bytes = new Array();
-				for(let j = 0; j < value.n_children(); j++)
-					bytes[j] = value.get_child_value(j).get_byte();
-
-				ans[index.get_string()[0]] = String.fromCharCode.apply(String, bytes);
-			}
-
-		return ans;
+	_hdlAddStreams: function(conn, query){
+		let response = conn.call_finish(query).get_child_value(0).unpack();
+		for(let i = 0; i < response.n_children(); i++)
+			this._addPAStream(response.get_child_value(i).get_string()[0]);
 	},
 
 	_addPAStream: function(path){
-		let streamProps = this.getPAStreamInformation(path);
-		
-		let pID = parseInt(streamProps['application.process.id']);
-		if('media.role' in streamProps){
-			let role = streamProps['media.role'];
-			role = role.substring(0, role.length -1); 
-			if(role == 'event') return;
-		}
+		this._paDBus.call(null, path, 'org.freedesktop.DBus.Properties', 'Get',
+			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Stream', 'PropertyList']), 
+			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
+				let streamInfo = conn.call_finish(query).get_child_value(0).unpack();
 
-		if(this._mprisControl){
-			let mprisCheck = this._mprisControl.isMPRISStream(pID, path);
-			if(mprisCheck){
-				this._delegatedStreams[path] = this._mprisControl;
-				return;
-			}
-		}
+				//Decode stream information
+				let sInfo = {};
+				for(let i = 0; i < streamInfo.n_children(); i++){
+					let [key, value] = streamInfo.get_child_value(i).unpack();
+					let bytes = new Array();
+					for(let j = 0; j < value.n_children(); j++)
+						bytes[j] = value.get_child_value(j).get_byte();
+					sInfo[key.get_string()[0]] = String.fromCharCode.apply(String, bytes);
+				}
 
-		let stream = new SimpleStream(this._paDBus, path, streamProps);
-		this._streams[path] = stream;
-		this.addMenuItem(stream);
-		this._streams.length ++;
+				let pID = parseInt(sInfo['application.process.id']);
+				let role;
+				if('media.role' in sInfo){
+					role = sInfo['media.role'];
+					role = role.substring(0, role.length -1);
+				}
+
+				if(role != 'event'){
+					let mprisCheck = false;
+
+					if(this._mprisControl){
+						mprisCheck = this._mprisControl.isMPRISStream(pID, path);
+					}
+
+					if(mprisCheck){
+						this._delegatedStreams[path] = this._mprisControl;
+					} else {
+						let stream = new SimpleStream(this._paDBus, path, sInfo);
+						this._streams[path] = stream;
+						this.addMenuItem(stream);
+						this._streams.length ++;
+					}
+
+
+				}
+			})
+		);
 	},
 
 	_onAddStream: function(conn, sender, object, iface, signal, param, user_data){
