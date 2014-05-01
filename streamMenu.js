@@ -10,6 +10,7 @@ const Main = imports.ui.main;
 const Slider = imports.ui.slider;
 const Loop = imports.mainloop;
 
+
 const WindowTracker = Shell.WindowTracker.get_default();
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 
@@ -237,6 +238,8 @@ const StreamBase = new Lang.Class({
 				this._paDBus.call(null, this._paPath, 'org.freedesktop.DBus.Properties', 'Set',
 					GLib.Variant.new('(ssv)', ['org.PulseAudio.Core1.Stream', 'Volume', targets]), null, 
 					Gio.DBusCallFlags.NONE, -1, null, null);
+				if(this._muteVal)
+					this.setVolume(false);
 			}
 		}
 		else if(volume instanceof GLib.Variant){
@@ -842,7 +845,7 @@ const MPRISStream2 = new Lang.Class({
 		if(this._app != null)
 			this._app.activate();
 	},
-	
+
 	_onDestroy: function(){
 		this._dbus.signal_unsubscribe(this._sigPropChange);
 		this._dbus.signal_unsubscribe(this._sigSeeked);
