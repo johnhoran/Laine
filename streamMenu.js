@@ -24,7 +24,7 @@ const StreamMenu = new Lang.Class({
 		this.parent();
 		this._paDBus = paconn;
 
-		//this._mprisControl = new MPRISStream.Control(this, this._paDBus);
+		this._mprisControl = new MPRISStream.Control(this, this._paDBus);
 
 		this._streams = {};
 		this._delegatedStreams = {};
@@ -147,6 +147,7 @@ const StreamMenu = new Lang.Class({
 const StreamBase = new Lang.Class({
 	Name: 'StreamBase',
 	Extends: PopupMenu.PopupMenuSection,
+	Abstract: true,
 
 	_init: function(paconn){
 		this.parent();
@@ -181,7 +182,6 @@ const StreamBase = new Lang.Class({
 			this.setVolume(value);
 		}));
 
-		this._label.connect('button-press-event', Lang.bind(this, this._raise));
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 	},
 
@@ -318,12 +318,10 @@ const SimpleStream = new Lang.Class({
 		this._muteBtn.child = icon;
 		this._label.text = name;
 
-
-		this._raise = function(){
+		this._label.connect('button-press-event', Lang.bind(this, function(){
 			if(this._app != null)
 				this._app.activate();
-		};
-
-	},
+		}));
+	}
 
 });
