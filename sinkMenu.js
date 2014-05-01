@@ -26,7 +26,7 @@ const SinkMenu = new Lang.Class({
 			children[i].destroy();
 		this.actor.remove_actor(this._expandBtn);
 		this._expandBtn.hide();
-
+		
 		this._paDBus = paconn;
 		this._sinks = {};
 		this._sinks.length = 0;

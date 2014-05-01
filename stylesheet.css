@@ -23,6 +23,11 @@
 	width:20em;
 }
 
+.stream:alone{
+	padding-right: 0.1em;
+}
+
+
 .stream:hover{
 	background-color:#4c4c4c;
 }
@@ -78,7 +83,8 @@
 }
 
 .mpris-metadata-display:alone {
-	padding-top:0.2em;
+	padding-top:0.8em;
+	padding-left:0.3em;
 }
 
 .mpris-player-controls > StButton{
