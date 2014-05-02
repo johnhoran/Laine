@@ -328,13 +328,13 @@ const SinkMenu = new Lang.Class({
 			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', 'PlaybackStreams']), 
 			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
 				let streams = conn.call_finish(query);
-				streams = conn.get_child_value(0).unpack();
+				streams = streams.get_child_value(0).unpack();
 
 				for(let i = 0; i < streams.n_children(); i++){
 					let path = streams.get_child_value(i).get_string()[0];
 
 					this._paDBus.call(null, path, 'org.PulseAudio.Core1.Stream', 'Move',
-						value, null, Gio.DBusCallFlags.NONE, -1, null, null);
+						GLib.Variant.new('(o)', [item._sinkPath]), null, Gio.DBusCallFlags.NONE, -1, null, null);
 				}
 			})
 		);
