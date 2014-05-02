@@ -64,6 +64,7 @@ const Laine = new Lang.Class({
 		let streamMenu = new StreamMenu.StreamMenu(this._paDBusConnection);
 
 		sinkMenu.connect('icon-changed', Lang.bind(this, this._onUpdateIcon));
+		sinkMenu.connect('fallback-updated', Lang.bind(streamMenu, streamMenu._onSetDefaultSink));
 
 		this._setIndicatorIcon(sinkMenu._slider.value);
 
@@ -79,6 +80,7 @@ const Laine = new Lang.Class({
 		this._addPulseAudioListeners();
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 		this.actor.connect('scroll-event', Lang.bind(sinkMenu, sinkMenu.scroll));
+
 		return 0;
 	},
 

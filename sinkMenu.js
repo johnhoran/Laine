@@ -130,9 +130,11 @@ const SinkMenu = new Lang.Class({
 				);
 			})
 		);
+		this.emit('fallback-updated', this._outputSink);
 	},
 
 	setVolume: function(volume){
+		this.emit('fallback-updated', this._outputSink);
 		if(typeof volume === 'boolean'){
 			let val = GLib.Variant.new_boolean(volume);
 			this._paDBus.call(null, this._outputSink, 'org.freedesktop.DBus.Properties', 'Set',
@@ -323,21 +325,6 @@ const SinkMenu = new Lang.Class({
 		let value = GLib.Variant.new_object_path(item._sinkPath);
 		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.freedesktop.DBus.Properties', 'Set',
 			GLib.Variant.new('(ssv)', ['org.PulseAudio.Core1', 'FallbackSink', value]), null, Gio.DBusCallFlags.NONE, -1, null, null);
-
-		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.freedesktop.DBus.Properties', 'Get',
-			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', 'PlaybackStreams']), 
-			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
-				let streams = conn.call_finish(query);
-				streams = streams.get_child_value(0).unpack();
-
-				for(let i = 0; i < streams.n_children(); i++){
-					let path = streams.get_child_value(i).get_string()[0];
-
-					this._paDBus.call(null, path, 'org.PulseAudio.Core1.Stream', 'Move',
-						GLib.Variant.new('(o)', [item._sinkPath]), null, Gio.DBusCallFlags.NONE, -1, null, null);
-				}
-			})
-		);
 	},
 
 	_notifyVolumeChange: function() {

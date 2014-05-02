@@ -95,6 +95,8 @@ const StreamMenu = new Lang.Class({
 					role = role.substring(0, role.length -1);
 				}
 
+				this._moveStreamToDefaultSink(path);
+
 				if(role != 'event'){
 					let mprisCheck = false;
 
@@ -103,7 +105,7 @@ const StreamMenu = new Lang.Class({
 					}
 
 					if(mprisCheck){
-						this._delegatedStreams[path] = this._mprisControl;
+						this._delegatedStreams[path] = this._mprisControl._mprisStreams[pID];
 					} else {
 						let stream = new SimpleStream(this._paDBus, path, sInfo);
 						this._streams[path] = stream;
@@ -113,6 +115,37 @@ const StreamMenu = new Lang.Class({
 				}
 			})
 		);
+	},
+
+	_moveStreamToDefaultSink: function(path) {
+		this._paDBus.call(null, path, 'org.freedesktop.DBus.Properties', 'Get',
+			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Stream', 'Device']), GLib.VariantType.new('(v)'), 
+			Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
+				let resp = conn.call_finish(query);
+				resp = resp.get_child_value(0).unpack();
+
+				let cPath = resp.get_string()[0];
+				if(cPath != path)
+					this._paDBus.call(null, path, 'org.PulseAudio.Core1.Stream', 'Move',
+						GLib.Variant.new('(o)', [this._defaultSink]), null, Gio.DBusCallFlags.NONE, -1, null, null);
+			})
+		);
+	},
+
+	_onSetDefaultSink: function(src, sink){
+		this._defaultSink = sink;
+
+		for(let k in this._streams)
+			if(k != 'length')
+				this._moveStreamToDefaultSink(k);
+		
+		for(let k in this._delegatedStreams){
+			if(k != 'length'){
+				let obj = this._delegatedStreams[k]._paPath;
+				this._moveStreamToDefaultSink(obj);
+			}
+
+		}
 	},
 
 	_onAddStream: function(conn, sender, object, iface, signal, param, user_data){
@@ -137,7 +170,7 @@ const StreamMenu = new Lang.Class({
 				this.actor.hide();*/
 		}
 		else if(streamPath in this._delegatedStreams){
-			this._delegatedStreams[streamPath].removePAStream(streamPath);
+			this._mprisControl.removePAStream(streamPath);
 			delete this._delegatedStreams[streamPath];
 		}
 	},
