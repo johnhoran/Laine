@@ -18,36 +18,49 @@ const Shell = imports.gi.Shell;
 const StreamMenu = Me.imports.streamMenu;
 const SinkMenu = Me.imports.sinkMenu;
 
-let _paModuleLoaded = false;
-let _paDBusConnection;
-function getPADBusConnection(){
-	if(_paDBusConnection) return _paDBusConnection;
+function connectToPADBus(callback){
+	let dbus = Gio.DBus.session;
 
-	let addr = /*'unix:path=/run/user/1000/pulse/dbus-socket';//*/this.getServerAddress();
-	try{
-		_paDBusConnection = Gio.DBusConnection.new_for_address_sync(addr, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT, null, null);
-	}
-	catch(e){
-		// Caught an exception, make sure pulseaudio has loaded dbus
-		GLib.spawn_command_line_sync("pactl load-module module-dbus-protocol", null, null, null);
-		_paDBusConnection = Gio.DBusConnection.new_for_address_sync(addr, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT, null, null);
-		_paModuleLoaded = true;
-	}
-	return _paDBusConnection;
+	dbus.call('org.PulseAudio1', '/org/pulseaudio/server_lookup1', "org.freedesktop.DBus.Properties", "Get",
+		GLib.Variant.new('(ss)', ['org.PulseAudio.ServerLookup1', 'Address']), GLib.VariantType.new("(v)"),
+		Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
+			let resp = conn.call_finish(query);
+			resp = resp.get_child_value(0).unpack();
+			let paAddr = resp.get_string()[0];
+
+			Gio.DBusConnection.new_for_address(paAddr, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT, null, null, 
+				Lang.bind(this, function(conn, query){
+					try{
+						let paConn = conn.new_for_address_finish(query);
+						callback(paConn, false);
+					} catch(e) {
+						//Couldn't connect to PADBus, try manually loading the module and reconnecting
+						let [, pid]  = GLib.spawn_async(null, ['pactl','load-module','module-dbus-protocol'], null,
+							GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.STDOUT_TO_DEV_NULL | GLib.SpawnFlags.STDERR_TO_DEV_NULL | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+								null, null);
+
+						this._childWatch = GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, status, requestObj) {
+							GLib.source_remove(this._childWatch);
+
+							Gio.DBusConnection.new_for_address(paAddr, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT, null, null, 
+								Lang.bind(this, function(conn, query){
+									try{
+										let paConn = conn.new_for_address_finish(query);
+										callback(paConn, true);
+									} catch(e) {
+										log('Laine: Cannot connect to pulseaudio over dbus');
+										throw e;
+									}
+								})
+							);
+						}));
+					}
+				})
+			);
+		})
+	);
 }
 
-function getServerAddress(){
-	let ServerLookupProxy = Gio.DBusProxy.makeProxyWrapper('<node>\
-			<interface name="org.PulseAudio.ServerLookup1">\
-				<property name="Address" type="s" access="read" />\
-			</interface>\
-		</node>');
-
-	let conn = new ServerLookupProxy(Gio.DBus.session, 'org.PulseAudio1', '/org/pulseaudio/server_lookup1');
-	let address = conn.Address;
-
-	return address;
-}
 
 
 const Laine = new Lang.Class({
@@ -56,66 +69,76 @@ const Laine = new Lang.Class({
 
 	_init: function(){
 		this.parent(0.0);
-		this._paDBusConnection = getPADBusConnection();
 
 		this._icon = new St.Icon({ icon_name: 'system-run-symbolic', style_class: 'system-status-icon' });
-
-		let sinkMenu = new SinkMenu.SinkMenu(this._paDBusConnection);
-		let streamMenu = new StreamMenu.StreamMenu(this._paDBusConnection);
-
-		sinkMenu.connect('icon-changed', Lang.bind(this, this._onUpdateIcon));
-		sinkMenu.connect('fallback-updated', Lang.bind(streamMenu, streamMenu._onSetDefaultSink));
-
-		this._setIndicatorIcon(sinkMenu._slider.value);
 
 		let hbox = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
 		hbox.add_child(this._icon);
 
 		this.actor.add_child(hbox);
 
-		this.menu.addMenuItem(sinkMenu);
-		this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-		this.menu.addMenuItem(streamMenu);
-
-		this._addPulseAudioListeners();
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
-		this.actor.connect('scroll-event', Lang.bind(sinkMenu, sinkMenu.scroll));
+
+		connectToPADBus(Lang.bind(this, function(conn, manual){
+			this._paDBus = conn;
+			this._moduleLoad = manual;
+
+			let sinkMenu = new SinkMenu.SinkMenu(this._paDBus);
+			let streamMenu = new StreamMenu.StreamMenu(this._paDBus);
+
+			sinkMenu.connect('icon-changed', Lang.bind(this, this._onUpdateIcon));
+			sinkMenu.connect('fallback-updated', Lang.bind(streamMenu, streamMenu._onSetDefaultSink));
+
+			this._setIndicatorIcon(sinkMenu._slider.value);
+			this._addPulseAudioListeners();
+
+			this.menu.addMenuItem(sinkMenu);
+			this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+			this.menu.addMenuItem(streamMenu);
+
+			this.actor.connect('scroll-event', Lang.bind(sinkMenu, sinkMenu.scroll));
+
+			//Everything good up to this point, lets replace the built in sound indicator
+			Main.panel.addToStatusArea('laine', this);
+			Main.panel.statusArea.aggregateMenu._volume._volumeMenu.actor.hide();
+			Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.hide();
+		}));
 
 		return 0;
 	},
 
 	_addPulseAudioListeners: function(){
 		//Stream listening
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.NewPlaybackStream', []]),  
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.PlaybackStreamRemoved', []]),  
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.Stream.VolumeUpdated', []]),  
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.Stream.MuteUpdated', []]),  
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
 
 		//Sink listening
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.Device.VolumeUpdated', []]),  
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.Device.MuteUpdated', []]),  
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.Device.ActivePortUpdated', []]),  
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.NewSink', []]),  
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.SinkRemoved', []]),  
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.FallbackSinkUpdated', []]),  
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
 	},
@@ -139,42 +162,43 @@ const Laine = new Lang.Class({
 	},
 
 	_onDestroy: function(){
-		//Possibly this should only be done when we loaded the pa dbus module ourselves, otherwise it is possible that another applications
-		//is listenening on this signals, don't know if there is anyway of checking if this is the case.
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
-			GLib.Variant.new('(s)', ['org.PulseAudio.Core1.NewPlaybackStream']),  
-			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
-			GLib.Variant.new('(s)', ['org.PulseAudio.Core1.PlaybackStreamRemoved']),  
-			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
-			GLib.Variant.new('(s)', ['org.PulseAudio.Core1.Stream.VolumeUpdated']),  
-			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
-			GLib.Variant.new('(s)', ['org.PulseAudio.Core1.Stream.MuteUpdated']),  
-			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
-			GLib.Variant.new('(s)', ['org.PulseAudio.Core1.Device.VolumeUpdated']),  
-			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
-			GLib.Variant.new('(s)', ['org.PulseAudio.Core1.Device.MuteUpdated']),  
-			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
-			GLib.Variant.new('(s)', ['org.PulseAudio.Core1.Device.ActivePortUpdated']),  
-			null, Gio.DBusCallFlags.NONE, -1, null, null);		
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
-			GLib.Variant.new('(s)', ['org.PulseAudio.Core1.NewSink']),  
-			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
-			GLib.Variant.new('(s)', ['org.PulseAudio.Core1.SinkRemoved']),  
-			null, Gio.DBusCallFlags.NONE, -1, null, null);
-		this._paDBusConnection.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
-			GLib.Variant.new('(s)', ['org.PulseAudio.Core1.FallbackSinkUpdated']),  
-			null, Gio.DBusCallFlags.NONE, -1, null, null);
+		if(this._paDBus){
+			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
+				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.NewPlaybackStream']),  
+				null, Gio.DBusCallFlags.NONE, -1, null, null);
+			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
+				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.PlaybackStreamRemoved']),  
+				null, Gio.DBusCallFlags.NONE, -1, null, null);
+			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
+				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.Stream.VolumeUpdated']),  
+				null, Gio.DBusCallFlags.NONE, -1, null, null);
+			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
+				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.Stream.MuteUpdated']),  
+				null, Gio.DBusCallFlags.NONE, -1, null, null);
+			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
+				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.Device.VolumeUpdated']),  
+				null, Gio.DBusCallFlags.NONE, -1, null, null);
+			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
+				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.Device.MuteUpdated']),  
+				null, Gio.DBusCallFlags.NONE, -1, null, null);
+			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
+				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.Device.ActivePortUpdated']),  
+				null, Gio.DBusCallFlags.NONE, -1, null, null);		
+			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
+				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.NewSink']),  
+				null, Gio.DBusCallFlags.NONE, -1, null, null);
+			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
+				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.SinkRemoved']),  
+				null, Gio.DBusCallFlags.NONE, -1, null, null);
+			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
+				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.FallbackSinkUpdated']),  
+				null, Gio.DBusCallFlags.NONE, -1, null, null);
 
-		if(_paModuleLoaded){
-			_paDBusConnection = null;
-			GLib.spawn_command_line_sync("pactl unload-module module-dbus-protocol", null, null, null);
+			if(this._moduleLoad){
+				GLib.spawn_async(null, ['pactl','unload-module','module-dbus-protocol'], null,
+					GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.STDOUT_TO_DEV_NULL | GLib.SpawnFlags.STDERR_TO_DEV_NULL | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+									null, null);
+			}
 		}
 	}
 
@@ -187,9 +211,6 @@ function init(){}
 
 function enable(){
 	_menuButton = new Laine();
-	Main.panel.addToStatusArea('laine', _menuButton);
-	Main.panel.statusArea.aggregateMenu._volume._volumeMenu.actor.hide();
-	Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.hide();
 }
 
 function disable(){

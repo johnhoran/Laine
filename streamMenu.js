@@ -422,7 +422,7 @@ const MPRISControl = new Lang.Class({
 					}
 
 					if(uname != null){
-						let nStr = new MPRISStream2(uname, pid, this._dbus, this._paDBus);
+						let nStr = new MPRISStream(uname, pid, this._dbus, this._paDBus);
 						this._mprisStreams[pid] = nStr;
 						this.actor.add(nStr.actor);
 						this._mprisStreams.length ++;
@@ -480,7 +480,7 @@ const MPRISControl = new Lang.Class({
 
 });
 
-const MPRISStream2 = new Lang.Class({
+const MPRISStream = new Lang.Class({
 	Name: 'MPRISStream',
 	Extends: StreamBase,
 
@@ -673,7 +673,6 @@ const MPRISStream2 = new Lang.Class({
 
 		this._sigFVol = this._volSlider.connect('value-changed', 
 			Lang.bind(this, function(slider, value, property){
-				log('test'+this._paPath);
 				this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Set",
 					GLib.Variant.new('(ssv)', ['org.mpris.MediaPlayer2.Player', 'Volume', GLib.Variant.new_double(value)]), 
 					null, Gio.DBusCallFlags.NONE, -1, null, null);
