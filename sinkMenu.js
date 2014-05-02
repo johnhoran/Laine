@@ -202,6 +202,7 @@ const SinkMenu = new Lang.Class({
 	},
 
 	_setMuteIcon: function(desc){
+		log('DESC'+ desc);
 		if(desc == 'Headphones')
 			this._icon.icon_name = 'audio-headphones-symbolic';
 		else if(desc == 'Digital Output (S/PDIF)' || desc == 'HDMI / DisplayPort')
