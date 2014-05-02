@@ -194,11 +194,15 @@ const Laine = new Lang.Class({
 				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.FallbackSinkUpdated']),  
 				null, Gio.DBusCallFlags.NONE, -1, null, null);
 
+			/*  Unloading the module has caused pulseaudio to lose its connection to the sound card more than once, so for the sake of it
+			 *	 it's probably a better idea to leave it loaded.
+			 *
 			if(this._moduleLoad){
 				GLib.spawn_async(null, ['pactl','unload-module','module-dbus-protocol'], null,
 					GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.STDOUT_TO_DEV_NULL | GLib.SpawnFlags.STDERR_TO_DEV_NULL | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
 									null, null);
 			}
+			*/
 		}
 	}
 
