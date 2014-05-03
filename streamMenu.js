@@ -161,10 +161,10 @@ const StreamMenu = new Lang.Class({
 		let streamPath = param.get_child_value(0).unpack();
 		
 		if(streamPath in this._streams){
-
 			this._streams[streamPath].destroy();
 			delete this._streams[streamPath];
 			this._streams.length --;
+			this.actor.queue_relayout();
 /*
 			if(this._streams.length == 0)
 				this.actor.hide();*/
@@ -415,17 +415,35 @@ const MPRISControl = new Lang.Class({
 				let pid = conn.call_finish(query).get_child_value(0).get_uint32();
 				if(!(pid in this._mprisStreams)){
 					this._mprisStreams[pid] = '';
-					if(uname == null){
-						uname = this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "GetNameOwner",
-							GLib.Variant.new('(s)', [path]), GLib.VariantType.new('(s)'), Gio.DBusCallFlags.NONE, -1, null);
-						uname = uname.get_child_value(0).unpack();
-					}
 
-					if(uname != null){
+					let add = Lang.bind(this, function(uname){
 						let nStr = new MPRISStream(uname, pid, this._dbus, this._paDBus);
 						this._mprisStreams[pid] = nStr;
 						this.actor.add(nStr.actor);
 						this._mprisStreams.length ++;
+					});
+
+					if(uname == null){
+						this._dbus.call('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "GetNameOwner",
+							GLib.Variant.new('(s)', [path]), GLib.VariantType.new('(s)'), Gio.DBusCallFlags.NONE, -1, null, 
+							Lang.bind(this, function(conn, query){
+								let resp = conn.call_finish(query);
+								resp = resp.get_child_value(0).unpack();
+								if(resp != null)
+									add(resp);
+							})
+						);/*
+						uname = this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "GetNameOwner",
+							GLib.Variant.new('(s)', [path]), GLib.VariantType.new('(s)'), Gio.DBusCallFlags.NONE, -1, null);
+						uname = uname.get_child_value(0).unpack();*/
+					}
+
+					if(uname != null){
+						add(uname);/*
+						let nStr = new MPRISStream(uname, pid, this._dbus, this._paDBus);
+						this._mprisStreams[pid] = nStr;
+						this.actor.add(nStr.actor);
+						this._mprisStreams.length ++;*/
 					}
 				}
 			})
@@ -466,6 +484,7 @@ const MPRISControl = new Lang.Class({
 				if(k != 'length' && this._mprisStreams[k]._path == uName){
 					this._mprisStreams[k].destroy();
 					delete this._mprisStreams[k];
+					this.actor.queue_relayout();
 					break;
 				}
 			}
@@ -519,16 +538,16 @@ const MPRISStream = new Lang.Class({
 		this._timeLapLbl = new St.Label({style_class:'mpris-time-label'});
 		this._timeRemLbl = new St.Label({style_class:'mpris-time-label'});
 
-		let artistBox = new St.BoxLayout();
-		artistBox.add(new St.Label({text:'by', style_class:'mpris-label-subtext'}));
-		artistBox.add(this._artistLbl);
-		let albumBox = new St.BoxLayout();
-		albumBox.add(new St.Label({text:'from', style_class:'mpris-label-subtext'}));
-		albumBox.add(this._albumLbl);
+		this._artistBox = new St.BoxLayout();
+		this._artistBox.add(new St.Label({text:'by', style_class:'mpris-label-subtext'}));
+		this._artistBox.add(this._artistLbl);
+		this._albumBox = new St.BoxLayout();
+		this._albumBox.add(new St.Label({text:'from', style_class:'mpris-label-subtext'}));
+		this._albumBox.add(this._albumLbl);
 		this._detailBox = new St.BoxLayout({vertical:true});
 		this._detailBox.add(this._songLbl);
-		this._detailBox.add(artistBox);
-		this._detailBox.add(albumBox);
+		this._detailBox.add(this._artistBox);
+		this._detailBox.add(this._albumBox);
 		this._sigUpdPos = 0;
 
 		let mediaControls = new St.BoxLayout({style_class: 'mpris-player-controls'});
@@ -704,6 +723,9 @@ const MPRISStream = new Lang.Class({
 
 			if('xesam:title' in metaD){
 				this._songLbl.text = metaD['xesam:title'].get_string()[0];
+				this._songLbl.show();
+			} else {
+				this._songLbl.hide();
 			}
 
 			if('xesam:artist' in metaD){
@@ -714,10 +736,16 @@ const MPRISStream = new Lang.Class({
 					str += ', '+artists.get_child_value(i).get_string()[0];
 
 				this._artistLbl.text = str;
+				this._artistBox.show();
+			} else {
+				this._artistBox.hide();
 			}
 
 			if('xesam:album' in metaD){
 				this._albumLbl.text = metaD['xesam:album'].get_string()[0];
+				this._albumBox.show();
+			} else {
+				this._albumBox.hide();
 			}
 
 			if('mpris:artUrl' in metaD){
@@ -729,6 +757,9 @@ const MPRISStream = new Lang.Class({
 					let icon = new Gio.FileIcon({file:file});
 					this._albumArt.gicon = icon;
 				}
+				this._albumArt.show();
+			} else {
+				this._albumArt.hide();
 			}
 
 			if('mpris:trackid' in metaD)
@@ -913,6 +944,10 @@ const MPRISStream = new Lang.Class({
 		if(this._paPath){
 			this._paDBus.signal_unsubscribe(this._sigVol);
 			this._paDBus.signal_unsubscribe(this._sigMute);
+		}
+		if(this._sigUpdPos != 0) {
+			Loop.source_remove(this._sigUpdPos);
+			this._sigUpdPos = 0;
 		}
 	}
 });
