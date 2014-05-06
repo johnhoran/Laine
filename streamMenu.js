@@ -344,19 +344,23 @@ const SimpleStream = new Lang.Class({
 					this._app = trayNotifications[i].app;
 		}
 
-		let icon, name;
-		if(this._app == null){
+		let icon, name= null;
+		if(this._app != null){
+			let info = this._app.get_app_info();
+			if(info != null){
+				name = info.get_name();
+				icon = new St.Icon({style_class: 'simple-stream-icon'});
+				icon.set_gicon(info.get_icon());
+			}
+		}
+
+		if(name == null){
 			name = sInfo['application.name'];
 			let iname;
 			if('application.icon_name' in sInfo) iname = sInfo['application.icon_name'];
 			else iname = 'package_multimedia';
 			icon = new St.Icon({icon_name: iname, style_class: 'simple-stream-icon'});
-		} else {
-			let info = this._app.get_app_info();
-			name = info.get_name();
-			icon = new St.Icon({style_class: 'simple-stream-icon'});
-			icon.set_gicon(info.get_icon());
-		}
+		} 
 
 		this._muteBtn.child = icon;
 		this._label.text = name;
