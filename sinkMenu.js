@@ -343,5 +343,4 @@ const SinkMenu = new Lang.Class({
 		this._paDBus.signal_unsubscribe(this._sigSkA);
 		this._paDBus.signal_unsubscribe(this._sigSkR);
 	}
-
 });

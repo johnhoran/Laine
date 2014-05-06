@@ -35,16 +35,11 @@ const StreamMenu = new Lang.Class({
 
 		this._streams = {};
 		this._delegatedStreams = {};
-		this._streams.length = 0;
 
 		//Add any existing streams
 		if(!(this._mprisControl))
 			this._addExistingStreams();
-		/*
-		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.freedesktop.DBus.Properties', 'Get',
-			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', 'PlaybackStreams']), 
-			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, this._hdlAddStreams));
-		*/
+
 		//Add signal handlers
 		this._sigNewStr = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewPlaybackStream',
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onAddStream), null );
@@ -64,12 +59,6 @@ const StreamMenu = new Lang.Class({
 					this._addPAStream(response.get_child_value(i).get_string()[0]);
 			})
 		);
-	},
-
-	_hdlAddStreams: function(conn, query){
-		let response = conn.call_finish(query).get_child_value(0).unpack();
-		for(let i = 0; i < response.n_children(); i++)
-			this._addPAStream(response.get_child_value(i).get_string()[0]);
 	},
 
 	_addPAStream: function(path){
@@ -110,7 +99,6 @@ const StreamMenu = new Lang.Class({
 						let stream = new SimpleStream(this._paDBus, path, sInfo);
 						this._streams[path] = stream;
 						this.addMenuItem(stream);
-						this._streams.length ++;
 					}
 				}
 			})
@@ -136,24 +124,17 @@ const StreamMenu = new Lang.Class({
 		this._defaultSink = sink;
 
 		for(let k in this._streams)
-			if(k != 'length')
 				this._moveStreamToDefaultSink(k);
 		
 		for(let k in this._delegatedStreams){
-			if(k != 'length'){
 				let obj = this._delegatedStreams[k]._paPath;
 				this._moveStreamToDefaultSink(obj);
-			}
-
 		}
 	},
 
 	_onAddStream: function(conn, sender, object, iface, signal, param, user_data){
 		let streamPath = param.get_child_value(0).unpack();
 		this._addPAStream(streamPath);
-/*
-		if(this._streams.length > 0)
-			this.actor.show();*/
 	},
 
 	_onRemoveStream: function(conn, sender, object, iface, signal, param, user_data){
@@ -163,11 +144,7 @@ const StreamMenu = new Lang.Class({
 		if(streamPath in this._streams){
 			this._streams[streamPath].destroy();
 			delete this._streams[streamPath];
-			this._streams.length --;
 			this.actor.queue_relayout();
-/*
-			if(this._streams.length == 0)
-				this.actor.hide();*/
 		}
 		else if(streamPath in this._delegatedStreams){
 			this._mprisControl.removePAStream(streamPath);
@@ -381,7 +358,6 @@ const MPRISControl = new Lang.Class({
 		this.actor = parent.actor;
 
 		this._mprisStreams = {};
-		this._mprisStreams.length = 0;
 
 		Gio.bus_get(Gio.BusType.SESSION, null, Lang.bind(this, this._hdlBusConnection));
 
@@ -424,7 +400,6 @@ const MPRISControl = new Lang.Class({
 						let nStr = new MPRISStream(uname, pid, this._dbus, this._paDBus);
 						this._mprisStreams[pid] = nStr;
 						this.actor.add(nStr.actor);
-						this._mprisStreams.length ++;
 					});
 
 					if(uname == null){
@@ -485,7 +460,7 @@ const MPRISControl = new Lang.Class({
 		else {
 			for(let k in this._mprisStreams){
 				let uName = param.get_child_value(1).get_string()[0];
-				if(k != 'length' && this._mprisStreams[k]._path == uName){
+				if(this._mprisStreams[k]._path == uName){
 					this._mprisStreams[k].destroy();
 					delete this._mprisStreams[k];
 					this.actor.queue_relayout();
