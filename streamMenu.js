@@ -9,6 +9,7 @@ const Shell = imports.gi.Shell;
 const Main = imports.ui.main;
 const Slider = imports.ui.slider;
 const Loop = imports.mainloop;
+const BoxPointer = imports.ui.boxpointer;
 
 
 const WindowTracker = Shell.WindowTracker.get_default();
@@ -27,9 +28,10 @@ const StreamMenu = new Lang.Class({
 	Name: 'StreamMenu',
 	Extends: PopupMenu.PopupMenuSection,
 
-	_init: function(paconn){
+	_init: function(parent, paconn){
 		this.parent();
 		this._paDBus = paconn;
+		this._parent = parent;
 
 		this._mprisControl = new MPRISControl(this, this._paDBus);
 
@@ -96,7 +98,7 @@ const StreamMenu = new Lang.Class({
 					if(mprisCheck){
 						this._delegatedStreams[path] = this._mprisControl._mprisStreams[pID];
 					} else {
-						let stream = new SimpleStream(this._paDBus, path, sInfo);
+						let stream = new SimpleStream(this, this._paDBus, path, sInfo);
 						this._streams[path] = stream;
 						this.addMenuItem(stream);
 					}
@@ -118,6 +120,10 @@ const StreamMenu = new Lang.Class({
 						GLib.Variant.new('(o)', [this._defaultSink]), null, Gio.DBusCallFlags.NONE, -1, null, null);
 			})
 		);
+	},
+
+	_getTopMenu: function(){
+		return this._parent._getTopMenu();
 	},
 
 	_onSetDefaultSink: function(src, sink){
@@ -164,10 +170,11 @@ const StreamBase = new Lang.Class({
 	Extends: PopupMenu.PopupMenuSection,
 	Abstract: true,
 
-	_init: function(paconn){
+	_init: function(parent, paconn){
 		this.parent();
 		this._paDBus = paconn;
 		this._paPath = null;
+		this._parent = parent;
 
 		this._label = new St.Label({style_class: 'simple-stream-label', reactive: true})
 		this._muteBtn = new St.Button();
@@ -306,8 +313,8 @@ const SimpleStream = new Lang.Class({
 	Name: 'SimpleStream',
 	Extends: StreamBase,
 
-	_init: function(paconn, path, sInfo){
-		this.parent(paconn);
+	_init: function(parent, paconn, path, sInfo){
+		this.parent(parent, paconn);
 		this.setPAPath(path);
 
 		this._procID = parseInt(sInfo['application.process.id']);
@@ -343,8 +350,10 @@ const SimpleStream = new Lang.Class({
 		this._label.text = name;
 
 		this._label.connect('button-press-event', Lang.bind(this, function(){
-			if(this._app != null)
+			if(this._app != null){
 				this._app.activate();
+				this._parent._getTopMenu().close(BoxPointer.PopupAnimation.FULL);
+			}
 		}));
 	}
 });
@@ -397,7 +406,7 @@ const MPRISControl = new Lang.Class({
 					this._mprisStreams[pid] = '';
 
 					let add = Lang.bind(this, function(uname){
-						let nStr = new MPRISStream(uname, pid, this._dbus, this._paDBus);
+						let nStr = new MPRISStream(this._parent, uname, pid, this._dbus, this._paDBus);
 						this._mprisStreams[pid] = nStr;
 						this.actor.add(nStr.actor);
 					});
@@ -440,7 +449,19 @@ const MPRISControl = new Lang.Class({
 
 	isMPRISStream: function(pid, path){
 		if(pid in this._mprisStreams){
-			this._mprisStreams[pid].setPAStream(path);
+			let obj = this._mprisStreams[pid];
+			if(obj == '')
+				//The pid has been registered however the object hasn't been created yet, so a timeout of 2 seconds lapses before
+				//trying to reregister the pa stream.
+				Loop.timeout_add_seconds(2, Lang.bind(this, function(){
+					try{
+						this._mprisStreams[pid].setPAStream(path);
+					} catch(e){
+						log(e);
+					}
+				}));
+			else 
+				obj.setPAStream(path);
 			return true;
 		}
 		return false;
@@ -482,8 +503,8 @@ const MPRISStream = new Lang.Class({
 	Name: 'MPRISStream',
 	Extends: StreamBase,
 
-	_init: function(dbusPath, pid, dbus, paconn){
-		this.parent(paconn);
+	_init: function(parent, dbusPath, pid, dbus, paconn){
+		this.parent(parent, paconn);
 		this._path = dbusPath;
 		this._procID = pid;
 		this._dbus = dbus;
@@ -571,7 +592,16 @@ const MPRISStream = new Lang.Class({
 					);
 				}
 				else if(response == 'Stopped'){
-					this.setDisplayState(0);
+					this._prevBtn.hide();
+					this._nextBtn.hide();
+					this._timeBox.hide();
+					this._detailBox.hide();
+					this._albumArt.hide();
+
+					this.actor.set_vertical(false);
+					this._metaDisplay.add_style_pseudo_class('alone');
+					this._playBtn.add_style_pseudo_class('alone');
+					this._volCtrl.add_style_pseudo_class('alone');
 				}
 			})
 		);
@@ -623,33 +653,6 @@ const MPRISStream = new Lang.Class({
 		this._muteBtn.child = icon;
 	},
 
-	setDisplayState: function(state){
-		if(state == 0){
-			this._prevBtn.hide();
-			this._nextBtn.hide();
-			this._timeBox.hide();
-			this._detailBox.hide();
-			this._albumArt.hide();
-
-			this.actor.set_vertical(false);
-			this._metaDisplay.add_style_pseudo_class('alone');
-			this._playBtn.add_style_pseudo_class('alone');
-			this._volCtrl.add_style_pseudo_class('alone');
-		}
-		else if(state == 1){
-			this.actor.set_vertical(true);
-			this._metaDisplay.remove_style_pseudo_class('alone');
-			this._playBtn.remove_style_pseudo_class('alone');
-			this._volCtrl.remove_style_pseudo_class('alone');
-
-			this._prevBtn.show();
-			this._nextBtn.show();
-			this._timeBox.show();
-			this._detailBox.show();
-			this._albumArt.show();
-		}
-	},
-
 	setPAStream: function(path){
 		if(this._sigFVol != -1){
 			this._volSlider.disconnect(this._sigFVol);
@@ -687,9 +690,27 @@ const MPRISStream = new Lang.Class({
 
 
 	_updateMetadata: function(meta){
-		if(meta.n_children() == 0)
-			this.setDisplayState(0);
+		if(meta == null || meta.n_children() == 0){
+			this._prevBtn.hide();
+			this._nextBtn.hide();
+			this._timeBox.hide();
+			this._detailBox.hide();
+			this._albumArt.hide();
+
+			this.actor.set_vertical(false);
+			this._metaDisplay.add_style_pseudo_class('alone');
+			this._playBtn.add_style_pseudo_class('alone');
+			this._volCtrl.add_style_pseudo_class('alone');
+		}
 		else {
+
+			this.actor.set_vertical(true);
+			this._metaDisplay.remove_style_pseudo_class('alone');
+			this._playBtn.remove_style_pseudo_class('alone');
+			this._volCtrl.remove_style_pseudo_class('alone');
+
+			this._prevBtn.show();
+			this._nextBtn.show();
 
 			let metaD = {};
 			for(let i = 0; i < meta.n_children(); i++){
@@ -703,6 +724,7 @@ const MPRISStream = new Lang.Class({
 			if('xesam:title' in metaD){
 				this._songLbl.text = metaD['xesam:title'].get_string()[0];
 				this._songLbl.show();
+				this._detailBox.show();
 			} else {
 				this._songLbl.hide();
 			}
@@ -729,6 +751,7 @@ const MPRISStream = new Lang.Class({
 
 			if('mpris:artUrl' in metaD){
 				let filePath = metaD['mpris:artUrl'].get_string()[0];
+				filePath = decodeURI(filePath);
 				let iconPath = filePath.substring(7, filePath.length);
 
 				if(GLib.file_test(iconPath, GLib.FileTest.EXISTS)){
@@ -744,12 +767,34 @@ const MPRISStream = new Lang.Class({
 			if('mpris:trackid' in metaD)
 				this._mediaID = metaD['mpris:trackid'].get_string()[0];
 
-			if('mpris:length' in metaD)
+			this._mediaLength = 0;
+			if('mpris:length' in metaD){
 				this._mediaLength = metaD['mpris:length'].get_int64();
-			else 
-				this._mediaLength = 0;
 
-			this.setDisplayState(1);
+				if(this._mediaLength == -1 && this._label.text == 'VLC media player') {
+					//VLC sends this field as a negative number when you are listening for the value, but sends the correct reply if you ask
+					//for metadata explicatly.  So lets try once asking directly for metadata.
+					this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+						GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'Metadata']), GLib.VariantType.new("(v)"),
+						Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
+							let meta = conn.call_finish(query).get_child_value(0).unpack();
+							for(let i = 0; i < meta.n_children(); i++){
+								let [key, val] = meta.get_child_value(i).unpack();
+								key = key.get_string()[0];
+								if(key == 'mpris:length'){
+									this._mediaLength = val.unpack().get_int64();
+									break;
+								}
+							}
+						})
+					);
+				}
+			}
+
+			if(this._mediaLength <= 0)
+				this._timeBox.hide();
+			else 
+				this._timeBox.show();
 		}
 	},
 
@@ -801,24 +846,12 @@ const MPRISStream = new Lang.Class({
 							this._playBtn.child.icon_name = 'media-playback-start-symbolic';        
 						}
 					}
-					else if(key == 'Volume'){
+					else if(key == 'Volume' && this._paPath != null){
 						let vol = val.get_double();
 						if(!this._muteVal) this._appVol = vol;
 						if(this._paPath == null)
 							this._volSlider.setValue(vol);
-					}/*
-					else if(key == 'CanGoNext'){
-						let b = val.get_boolean();
-						print('CGN:'+b);
-						this._nextBtn.can_focus = b;
-						this._nextBtn.reactive = b;
-						if(b)
-							this._nextBtn.remove_style_pseudo_class('disabled');
-						else 
-							this._nextBtn.add_style_pseudo_class('disabled');
-					}/*
-					else 
-						log('Unhandled '+key);*/
+					}
 				}
 
 
@@ -913,8 +946,10 @@ const MPRISStream = new Lang.Class({
 			}
 			
 		}
-		if(this._app != null)
+		if(this._app != null){
 			this._app.activate();
+			this._parent._getTopMenu().close(BoxPointer.PopupAnimation.FULL);
+		}
 	},
 
 	_onDestroy: function(){

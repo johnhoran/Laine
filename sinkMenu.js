@@ -17,8 +17,9 @@ const SinkMenu = new Lang.Class({
 	Name:'SinkMenu',
 	Extends: PopupMenu.PopupSubMenuMenuItem,
 
-	_init: function(paconn){
+	_init: function(parent, paconn){
 		this.parent('', true);
+		this._parent = parent;
 
 		let children = this.actor.get_children();
 		this._expandBtn = children[children.length - 1];

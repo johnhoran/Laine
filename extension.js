@@ -83,8 +83,9 @@ const Laine = new Lang.Class({
 			this._paDBus = conn;
 			this._moduleLoad = manual;
 
-			let sinkMenu = new SinkMenu.SinkMenu(this._paDBus);
-			let streamMenu = new StreamMenu.StreamMenu(this._paDBus);
+			let sinkMenu = new SinkMenu.SinkMenu(this, this._paDBus);
+			let sourceMenu = new SourceMenu.SourceMenu(this, this._paDBus);
+			let streamMenu = new StreamMenu.StreamMenu(this, this._paDBus);
 
 			sinkMenu.connect('icon-changed', Lang.bind(this, this._onUpdateIcon));
 			sinkMenu.connect('fallback-updated', Lang.bind(streamMenu, streamMenu._onSetDefaultSink));
@@ -93,6 +94,7 @@ const Laine = new Lang.Class({
 			this._addPulseAudioListeners();
 
 			this.menu.addMenuItem(sinkMenu);
+			this.menu.addMenuItem(sourceMenu);
 			this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 			this.menu.addMenuItem(streamMenu);
 
@@ -141,6 +143,14 @@ const Laine = new Lang.Class({
 		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.FallbackSinkUpdated', []]),  
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
+
+		//Record listening
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
+			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.NewRecordStream', []]),  
+			null, Gio.DBusCallFlags.NONE, -1, null, null);
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
+			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.RecordStreamRemoved', []]),  
+			null, Gio.DBusCallFlags.NONE, -1, null, null);
 	},
 
 	_setIndicatorIcon: function(value){
@@ -159,6 +169,10 @@ const Laine = new Lang.Class({
 
 	_onUpdateIcon: function(source, value){
 		this._setIndicatorIcon(value);
+	},
+
+	_getTopMenu: function(){
+		return menu;
 	},
 
 	_onDestroy: function(){
@@ -193,7 +207,12 @@ const Laine = new Lang.Class({
 			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
 				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.FallbackSinkUpdated']),  
 				null, Gio.DBusCallFlags.NONE, -1, null, null);
-
+			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
+				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.NewRecordStream']),  
+				null, Gio.DBusCallFlags.NONE, -1, null, null);
+			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
+				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.RecordStreamRemoved']),  
+				null, Gio.DBusCallFlags.NONE, -1, null, null);
 			/*  Unloading the module has caused pulseaudio to lose its connection to the sound card more than once, so for the sake of it
 			 *	 it's probably a better idea to leave it loaded.
 			 *
