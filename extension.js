@@ -31,7 +31,7 @@ function connectToPADBus(callback){
 			Gio.DBusConnection.new_for_address(paAddr, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT, null, null, 
 				Lang.bind(this, function(conn, query){
 					try{
-						let paConn = conn.new_for_address_finish(query);
+						let paConn = Gio.DBusConnection.new_for_address_finish(query);
 						callback(paConn, false);
 					} catch(e) {
 						//Couldn't connect to PADBus, try manually loading the module and reconnecting
