@@ -17,6 +17,7 @@ const Shell = imports.gi.Shell;
 
 const StreamMenu = Me.imports.streamMenu;
 const SinkMenu = Me.imports.sinkMenu;
+const SourceMenu = Me.imports.sourceMenu;
 
 function connectToPADBus(callback){
 	let dbus = Gio.DBus.session;
@@ -31,7 +32,7 @@ function connectToPADBus(callback){
 			Gio.DBusConnection.new_for_address(paAddr, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT, null, null, 
 				Lang.bind(this, function(conn, query){
 					try{
-						let paConn = conn.new_for_address_finish(query);
+						let paConn = Gio.DBusConnection.new_for_address_finish(query);
 						callback(paConn, false);
 					} catch(e) {
 						//Couldn't connect to PADBus, try manually loading the module and reconnecting
@@ -45,7 +46,7 @@ function connectToPADBus(callback){
 							Gio.DBusConnection.new_for_address(paAddr, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT, null, null, 
 								Lang.bind(this, function(conn, query){
 									try{
-										let paConn = conn.new_for_address_finish(query);
+										let paConn = Gio.DBusConnection.new_for_address_finish(query);
 										callback(paConn, true);
 									} catch(e) {
 										log('Laine: Cannot connect to pulseaudio over dbus');
@@ -85,6 +86,7 @@ const Laine = new Lang.Class({
 
 			let sinkMenu = new SinkMenu.SinkMenu(this._paDBus);
 			let streamMenu = new StreamMenu.StreamMenu(this._paDBus);
+			let sourceMenu = new SourceMenu.SourceMenu(this._paDBus);
 
 			sinkMenu.connect('icon-changed', Lang.bind(this, this._onUpdateIcon));
 			sinkMenu.connect('fallback-updated', Lang.bind(streamMenu, streamMenu._onSetDefaultSink));
@@ -93,6 +95,7 @@ const Laine = new Lang.Class({
 			this._addPulseAudioListeners();
 
 			this.menu.addMenuItem(sinkMenu);
+			this.menu.addMenuItem(sourceMenu);
 			this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 			this.menu.addMenuItem(streamMenu);
 
