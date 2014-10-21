@@ -17,6 +17,7 @@ const Shell = imports.gi.Shell;
 
 const StreamMenu = Me.imports.streamMenu;
 const SinkMenu = Me.imports.sinkMenu;
+const SourceMenu = Me.imports.sourceMenu;
 
 function connectToPADBus(callback){
 	let dbus = Gio.DBus.session;
