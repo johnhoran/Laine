@@ -10,7 +10,6 @@ const Slider = imports.ui.slider;
 const PopupMenu = imports.ui.popupMenu;
 const Signals = imports.signals;
 
-
 const VOLUME_NOTIFY_ID = 1;
 const PA_MAX = 65536;
 

@@ -10,9 +10,22 @@ const BoxPointer = imports.ui.boxpointer;
 const Slider = imports.ui.slider;
 const Signals = imports.signals;
 
+const Me = imports.misc.extensionUtils.getCurrentExtension();
+const PortMenu = Me.imports.portMenu;
+
 const VOLUME_NOTIFY_ID = 1;
 const PA_MAX = 65536;
 
+const SinkMenu = new Lang.Class({
+	Name: 'SinkMenu',
+	Extends: PortMenu.PortMenu,
+
+	_init:function(parent, paconn){
+		this.parent(parent, paconn, 'Sink');
+	}
+});
+
+/*
 const SinkMenu = new Lang.Class({
 	Name:'SinkMenu',
 	Extends: PopupMenu.PopupSubMenuMenuItem,
@@ -58,7 +71,7 @@ const SinkMenu = new Lang.Class({
 
 		//Laying stuff out
 		this.actor.add(muteBtn);
-		this.actor.add(this._slider.actor,{expand:true});
+		this.actor.add(this._slider.actor, {expand:true});
 		this.actor.add(this._expandBtn);
 
 		this.actor.add_style_class_name('stream');
@@ -345,3 +358,4 @@ const SinkMenu = new Lang.Class({
 		this._paDBus.signal_unsubscribe(this._sigSkR);
 	}
 });
+*/
