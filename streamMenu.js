@@ -420,18 +420,11 @@ const MPRISControl = new Lang.Class({
 								if(resp != null)
 									add(resp);
 							})
-						);/*
-						uname = this._dbus.call_sync('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "GetNameOwner",
-							GLib.Variant.new('(s)', [path]), GLib.VariantType.new('(s)'), Gio.DBusCallFlags.NONE, -1, null);
-						uname = uname.get_child_value(0).unpack();*/
+						);
 					}
 
 					if(uname != null){
-						add(uname);/*
-						let nStr = new MPRISStream(uname, pid, this._dbus, this._paDBus);
-						this._mprisStreams[pid] = nStr;
-						this.actor.add(nStr.actor);
-						this._mprisStreams.length ++;*/
+						add(uname);
 					}
 				}
 			})
