@@ -43,18 +43,7 @@ const PortMenu = new Lang.Class({
 					let response = conn.call_finish(query).get_child_value(0).unpack();
 					for(let i = 0; i < response.n_children(); i++){
 						let devicePath = response.get_child_value(i).get_string()[0];
-						this._paDBus.call(null, devicePath, 'org.freedesktop.DBus.Properties', 'Get',
-							GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'Ports']), 
-							GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
-							Lang.bind(this, function(conn, query){
-									let response = conn.call_finish(query).get_child_value(0).unpack();
-									
-									
-
-								}
-							)
-						);
-
+						this._addDevice(devicePath);
 					}
 
 				}
@@ -303,6 +292,12 @@ const PortMenu = new Lang.Class({
 		}
 	},
 
+	_addDevice: function(path) {
+		let device = new Device(path, this._paDBus);
+
+	},
+
+
 	_addSink: function(path){
 		this._paDBus.call(null, path, 'org.freedesktop.DBus.Properties', 'Get',
 			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'PropertyList']), 
@@ -372,13 +367,37 @@ const PortMenu = new Lang.Class({
 	}
 });
 
-const Port = Lang.Class({
+const Port = new Lang.Class({
 	Name: 'PulsePort',
 	Extends: PopupMenu.PopupMenuItem,
 
 	_init: function(path, paconn){
 		this._paDBus = paconn;
 		this._path = path;
+	}
+
+});
+
+
+const Device = new Lang.Class({
+	Name: 'PulseDevice',
+
+	_init: function(path, paconn){
+		this._paDBus = paconn;
+		this._path = path;
+
+		this._paDBus.call(null, devicePath, 'org.freedesktop.DBus.Properties', 'Get',
+			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'Ports']), 
+			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
+			Lang.bind(this, function(conn, query){
+					let portPaths = conn.call_finish(query).get_child_value(0).unpack();
+					for(let j = 0; j < portPaths.n_children(); j++){
+						let port = portPaths.get_child_value(j).get_string()[0];
+
+					}
+				}
+			)
+		);
 	}
 
 });
