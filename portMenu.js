@@ -32,7 +32,7 @@ const PortMenu = new Lang.Class({
 		
 		this._paDBus = paconn;
 		this._devices = {};
-		this._numDevices = 0;
+		this._numPorts = 0;
 
 		this._icon = new St.Icon({style_class: 'sink-icon'});
 		let muteBtn = new St.Button({child: this._icon});
@@ -123,10 +123,6 @@ const PortMenu = new Lang.Class({
 	_addDevice: function(path) {
 		let device = new Device(path, this._paDBus, this);
 		this._devices[path] = device;
-		this._numDevices ++;
-
-		if(this._numDevices > 1)
-			this._expandBtn.show();
 	},
 
 	_setActiveDevice: function(dev){
@@ -176,11 +172,11 @@ const PortMenu = new Lang.Class({
 			this._addDevice(addr);
 		else if(signal == 'SinkRemoved' || signal == 'SourceRemoved'){
 			if(addr in this._devices){
+				this._numPorts -= this._devices[addr]._numPorts;
 				this._devices[addr].destroy();
 				delete this._devices[addr];
 
-				this._numDevices --;
-				if(this._numDevices < 2)
+				if(this._numPorts < 2)
 					this._expandBtn.hide();
 
 			}
@@ -451,6 +447,7 @@ const Device = new Lang.Class({
 		this._activePort = null;
 
 		this._sigVol = this._sigMute = this._sigPort = 0;
+		this._numPorts = 0;
 
 		this._paDBus.call(null, this._path, 'org.freedesktop.DBus.Properties', 'Get',
 			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'PropertyList']),
@@ -482,7 +479,11 @@ const Device = new Lang.Class({
 						let portPath = portPaths.get_child_value(j).get_string()[0];
 						let port = new Port(portPath, this._paDBus, this);
 						this._ports[portPath] = port;
+						this._numPorts ++;
+						this._base._numPorts ++;
 						this._base.menu.addMenuItem(port);
+						if(this._base._numPorts > 1)
+							this._base._expandBtn.show();
 					}
 				}
 			)
