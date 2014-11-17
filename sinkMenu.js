@@ -22,6 +22,31 @@ const SinkMenu = new Lang.Class({
 
 	_init:function(parent, paconn){
 		this.parent(parent, paconn, 'Sink');
+	},
+
+	_setMuteIcon: function(desc){
+		if(desc == 'Headphones')
+			this._icon.icon_name = 'audio-headphones-symbolic';
+		else if(desc == 'Digital Output (S/PDIF)' || desc == 'HDMI / DisplayPort')
+			this._icon.icon_name = 'audio-card-symbolic';
+		else
+			this._icon.icon_name = 'audio-speakers-symbolic';
+	},
+
+	_isExpandBtnVisible: function(){
+		let num = 0;
+		for(let d in this._devices){
+			num += this._devices[d]._numPorts;
+			if(num > 0){
+				return true;
+			}
+		}  
+
+		return false;
+	},
+
+	_isVisible: function(){
+		return true;
 	}
 });
 

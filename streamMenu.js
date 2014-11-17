@@ -15,7 +15,6 @@ const BoxPointer = imports.ui.boxpointer;
 const WindowTracker = Shell.WindowTracker.get_default();
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 
-
 const PA_MAX = 65536;
 const WATCH_RULE = "type='signal'," +
 		"sender='org.freedesktop.DBus'," +

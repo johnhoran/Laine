@@ -35,6 +35,7 @@ function connectToPADBus(callback){
 						let paConn = Gio.DBusConnection.new_for_address_finish(query);
 						callback(paConn, false);
 					} catch(e) {
+						log('EXCEPTION:: '+e);
 						//Couldn't connect to PADBus, try manually loading the module and reconnecting
 						let [, pid]  = GLib.spawn_async(null, ['pactl','load-module','module-dbus-protocol'], null,
 							GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.STDOUT_TO_DEV_NULL | GLib.SpawnFlags.STDERR_TO_DEV_NULL | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
@@ -102,6 +103,9 @@ const Laine = new Lang.Class({
 			this.actor.connect('scroll-event', Lang.bind(sinkMenu, sinkMenu.scroll));
 
 			//Everything good up to this point, lets replace the built in sound indicator
+			if(Main.panel.statusArea.laine != 'undefined')
+				delete Main.panel.statusArea.laine;
+
 			Main.panel.addToStatusArea('laine', this);
 			Main.panel.statusArea.aggregateMenu._volume._volumeMenu.actor.hide();
 			Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.hide();
@@ -241,4 +245,5 @@ function disable(){
 	_menuButton.destroy();
 	Main.panel.statusArea.aggregateMenu._volume._volumeMenu.actor.show();
 	Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.show();
+	delete Main.panel.statusArea.laine;
 }
