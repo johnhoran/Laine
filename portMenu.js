@@ -87,7 +87,6 @@ const PortMenu = new Lang.Class({
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onDevChange), null );
 
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
-
 	},
 
 
@@ -136,7 +135,7 @@ const PortMenu = new Lang.Class({
 	},
 
 	_updateVisibility: function(){
-		let vis = this._isVisble();
+		let vis = this._isVisible();
 		if(vis)
 			this.actor.show();
 		else

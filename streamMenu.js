@@ -449,7 +449,7 @@ const MPRISControl = new Lang.Class({
 					try{
 						this._mprisStreams[pid].setPAStream(path);
 					} catch(e){
-						log(e);
+						log("Laine Exception: "+e);
 					}
 				}));
 			else 
