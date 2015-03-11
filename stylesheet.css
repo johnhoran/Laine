@@ -88,6 +88,13 @@
 	padding-left:0.3em;
 }
 
+.info-and-controls {
+	width:14em;
+}
+.mpris-player-controls {
+	padding-left:0.5em;
+}
+
 .mpris-player-controls > StButton{
 	color: #e6e6e6;
 }
