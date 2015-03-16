@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="gnome-shell-extensions">
+	<schema path="/org/gnome/shell/extensions/laine/" id="org.gnome.shell.extensions.laine">
+		<key type="i" name="volume-overdrive">
+			<default>100</default>
+			<summary>Allow increasing the volume beyond 100</summary>
+			<description>
+				This value allows Laine to change the upper limit for the volume slider.  It doesn't have a 
+				upper value set, but increasing it manually beyond 150% is proably inadvisable. 
+			</description>
+		</key>
+	</schema>
+</schemalist>

@@ -10,6 +10,8 @@ const Slider = imports.ui.slider;
 const PopupMenu = imports.ui.popupMenu;
 const Signals = imports.signals;
 
+const Me = imports.misc.extensionUtils.getCurrentExtension();
+const Convenience = Me.imports.convenience;
 
 const VOLUME_NOTIFY_ID = 1;
 const PA_MAX = 65536;
@@ -88,7 +90,6 @@ const PortMenu = new Lang.Class({
 
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 	},
-
 
 
 	_addDevice: function(path) {
@@ -211,6 +212,9 @@ const Device = new Lang.Class({
 		this._ports = {};
 		this._base = base;
 		this._activePort = null;
+
+		this._settings = Convenience.getSettings();
+		this._key_PA_OVERDRIVE = Me.imports.prefs.KEY_PA_OVER;
 
 		this._sigVol = this._sigMute = this._sigPort = 0;
 		this._numPorts = 0;
@@ -335,7 +339,7 @@ const Device = new Lang.Class({
 				if(val > max) max = val;
 			}
 
-			let target = volume * PA_MAX;
+			let target = volume * this._getPAMaxPref();
 			if(target != max){ //Otherwise no change
 				let targets = new Array();
 				for(let i = 0; i < this._volVariant.n_children(); i++){
@@ -368,7 +372,7 @@ const Device = new Lang.Class({
 						if(val > maxVal) maxVal = val;
 					}
 
-					this._base._slider.setValue(maxVal/PA_MAX);
+					this._base._slider.setValue(maxVal/this._getPAMaxPref());
 				}
 			}
 			else if(type == 'b'){
@@ -383,6 +387,9 @@ const Device = new Lang.Class({
 		}
 	},
 
+	_getPAMaxPref: function(){
+		return (PA_MAX * this._settings.get_int(this._key_PA_OVERDRIVE))/100;
+	},
 
 	//Event handlers
 	_onVolumeChanged: function(conn, sender, object, iface, signal, param, user_data){
@@ -402,7 +409,7 @@ const Device = new Lang.Class({
 
 			if(oldMax != newMax){ //Otherwise there is no change
 				this._volVariant = vals;
-				this._base._slider.setValue(newMax / PA_MAX);
+				this._base._slider.setValue(newMax / this._getPAMaxPref());
 			}
 		} 
 		else if(signal == 'MuteUpdated'){
@@ -416,7 +423,7 @@ const Device = new Lang.Class({
 					let val = this._volVariant.get_child_value(i).get_uint32();
 					if(max < val) max = val;
 				}
-				this._base._slider.setValue(max/PA_MAX);
+				this._base._slider.setValue(max/this._getPAMaxPref());
 			}
 		}
 		this._base.emit('icon-changed', this._base._slider.value);
