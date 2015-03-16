@@ -547,7 +547,7 @@ const MPRISStream = new Lang.Class({
 		mediaControls.add(this._playBtn);
 		mediaControls.add(this._nextBtn);
 
-		let innerBox = new St.BoxLayout({vertical:true, style_class:'info-and-controls'});
+		let innerBox = new St.BoxLayout({vertical:true, style_class:'mpris-info-and-controls'});
 		innerBox.add(this._detailBox);
 		innerBox.add(mediaControls);
 

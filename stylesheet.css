@@ -88,9 +88,14 @@
 	padding-left:0.3em;
 }
 
-.info-and-controls {
+.mpris-info-and-controls {
 	width:14em;
 }
+
+.mpris-metadata-display:alone .mpris-info-and-controls {
+	width:2em;
+}
+
 .mpris-player-controls {
 	padding-left:0.5em;
 }
