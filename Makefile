@@ -1,20 +1,22 @@
 #==================================================================
 UUID=laine@knasher.gmail.com
-FILES=extension.js sinkMenu.js sourceMenu.js streamMenu.js portMenu.js convenience.js prefs.js metadata.json stylesheet.css schemas license
+FILES=*.js metadata.json stylesheet.css schemas
 #==================================================================
 default_target: all
 .PHONY: clean all zip install
 
 clean:
-	rm -f $(UUID).zip schemas/gschemas.compiled
+	rm -f $(UUID).zip src/schemas/gschemas.compiled
 
 all: clean
-	@if [ -d schemas ]; then \
-		glib-compile-schemas schemas; \
+	@if [ -d src/schemas ]; then \
+		glib-compile-schemas src/schemas; \
 	fi
 
 zip: all
-	zip -rq $(UUID).zip $(FILES)
+	cd src ; zip -rq $(UUID).zip $(FILES)
+	mv src/$(UUID).zip .
+	zip -gq laine@knasher.gmail.com.zip license 
 
 install: all
-	cp -R $(FILES) ~/.local/share/gnome-shell/extensions/$(UUID)
+	cp -R src/$(FILES) ~/.local/share/gnome-shell/extensions/$(UUID)
