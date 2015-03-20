@@ -14,6 +14,10 @@ const BoxPointer = imports.ui.boxpointer;
 
 const WindowTracker = Shell.WindowTracker.get_default();
 const Me = imports.misc.extensionUtils.getCurrentExtension();
+const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+const _ = Gettext.gettext;
+
+const Convenience = Me.imports.convenience;
 
 const PA_MAX = 65536;
 const WATCH_RULE = "type='signal'," +
@@ -531,10 +535,10 @@ const MPRISStream = new Lang.Class({
 		this._timeRemLbl = new St.Label({style_class:'mpris-time-label'});
 
 		this._artistBox = new St.BoxLayout();
-		this._artistBox.add(new St.Label({text:'by', style_class:'mpris-label-subtext'}));
+		this._artistBox.add(new St.Label({text:_("by"), style_class:'mpris-label-subtext'}));
 		this._artistBox.add(this._artistLbl);
 		this._albumBox = new St.BoxLayout();
-		this._albumBox.add(new St.Label({text:'from', style_class:'mpris-label-subtext'}));
+		this._albumBox.add(new St.Label({text:_("from"), style_class:'mpris-label-subtext'}));
 		this._albumBox.add(this._albumLbl);
 		this._detailBox = new St.BoxLayout({vertical:true});
 		this._detailBox.add(this._songLbl);

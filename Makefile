@@ -1,22 +1,37 @@
 #==================================================================
 UUID=laine@knasher.gmail.com
-FILES=*.js metadata.json stylesheet.css schemas
+FILES=*.js metadata.json stylesheet.css
+
 #==================================================================
+
+po_files=$(basename $(notdir $(wildcard po/*.po)))
+
 default_target: all
 .PHONY: clean all zip install
 
 clean:
-	rm -f $(UUID).zip src/schemas/gschemas.compiled
+	rm -rf bin/ $(UUID).zip
 
 all: clean
+	mkdir -p bin
 	@if [ -d src/schemas ]; then \
-		glib-compile-schemas src/schemas; \
+		mkdir -p bin/schemas; \
+		glib-compile-schemas --targetdir=bin/schemas src/schemas/; \
 	fi
 
+	cp $(FILES:%=src/%) bin/
+
+	@for a in $(po_files); do\
+		mkdir -p bin/locale/$$a/LC_MESSAGES/; \
+		msgfmt po/$$a.po -o bin/locale/$$a/LC_MESSAGES/$(UUID).mo; \
+	done
+
+
 zip: all
-	cd src ; zip -rq $(UUID).zip $(FILES)
-	mv src/$(UUID).zip .
+	cd bin ; zip -rq $(UUID).zip *
+	mv bin/$(UUID).zip .
 	zip -gq laine@knasher.gmail.com.zip license 
 
 install: all
-	cp -R src/$(FILES) ~/.local/share/gnome-shell/extensions/$(UUID)
+	mkdir -p ~/.local/share/gnome-shell/extensions/$(UUID)
+	cp -R bin/* ~/.local/share/gnome-shell/extensions/$(UUID)

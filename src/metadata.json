@@ -4,5 +4,6 @@
 	"shell-version": [ "3.14" ],
 	"url": "https://github.com/johnhoran/Laine",
 	"uuid": "laine@knasher.gmail.com",
-	"settings-schema":"org.gnome.shell.extensions.laine"
+	"settings-schema":"org.gnome.shell.extensions.laine",
+	"gettext-domain":"laine@knasher.gmail.com"
 }

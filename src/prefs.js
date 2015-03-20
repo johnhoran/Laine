@@ -4,10 +4,14 @@ const GObject = imports.gi.GObject;
 
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
+const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
+const _ = Gettext.gettext;
 
 const KEY_PA_OVER = "volume-overdrive"
 
-function init(){}
+function init(){
+	Convenience.initTranslations();
+}
 
 const LainePrefsWidget = new GObject.Class({
 	Name: "Laine.Prefs.Widget",
@@ -27,13 +31,16 @@ const LainePrefsWidget = new GObject.Class({
 			this._settings.set_int(KEY_PA_OVER, src.get_value());
 		}));
 
+		log(Me.metadata['gettext-domain']);
 		this.attach(new Gtk.Label({
-			label: '<b>Volume Overdrive</b>',
+			label: '<b>'+_("Volume overdrive")+'</b>',
 			use_markup: true,
 			halign: Gtk.Align.START
 		}), 0, 0, 1, 1);
 
 		this.attach(volumeOverdrive, 20, 0, 40, 1);
+
+		let secondStr = _("Show active port label");
 	}
 });
 

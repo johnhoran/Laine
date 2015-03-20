@@ -18,6 +18,7 @@ const Shell = imports.gi.Shell;
 const StreamMenu = Me.imports.streamMenu;
 const SinkMenu = Me.imports.sinkMenu;
 const SourceMenu = Me.imports.sourceMenu;
+const Convenience = Me.imports.convenience;
 
 function connectToPADBus(callback){
 	let dbus = Gio.DBus.session;
@@ -235,7 +236,9 @@ const Laine = new Lang.Class({
 
 let _menuButton;
 
-function init(){}
+function init(){
+	Convenience.initTranslations();
+}
 
 function enable(){
 	_menuButton = new Laine();
