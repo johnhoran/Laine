@@ -92,6 +92,21 @@ const PortMenu = new Lang.Class({
 	},
 
 
+	_onKeyPressEvent: function(actor, event) {
+		let key = event.get_key_symbol();
+
+		if(key == Clutter.KEY_Right || key == Clutter.KEY_Left){
+			this._slider.onKeyPressEvent(actor, event);
+			return Clutter.EVENT_STOP;
+		}
+		else if(key == Clutter.KEY_space || key == Clutter.KEY_Return) {
+			this._setOpenState(!this._getOpenState());
+			return Clutter.EVENT_STOP;
+		}
+
+		return this.parent(actor, event);
+	},
+
 	_addDevice: function(path) {
 		let device = new Device(path, this._paDBus, this);
 		this._devices[path] = device;
