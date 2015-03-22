@@ -800,18 +800,30 @@ const MPRISStream = new Lang.Class({
 		this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
 			GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']), GLib.VariantType.new("(v)"),
 			Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
-				let response = conn.call_finish(query).get_child_value(0).unpack();
-				this._mediaPosition = response.get_int64();
+				try{
+					let response = conn.call_finish(query).get_child_value(0).unpack();
+					this._mediaPosition = response.get_int64();
 
-				if(this._sigUpdPos == 0)
-					this._sigUpdPos = Loop.timeout_add_seconds(1, Lang.bind(this, this._updatePosition));
+					if(this._sigUpdPos == 0)
+						this._sigUpdPos = Loop.timeout_add_seconds(1, Lang.bind(this, this._updatePosition));
+				} catch(err){
+					//not all players support position (e.g. Nuvola) so if this exception is thrown, do nothing.
+					if(!err.message.startsWith("GDBus.Error:org.freedesktop.DBus.Error.InvalidArgs: No such property"))
+						throw err;
+				}
 			})
 		);
 		this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
 			GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'Rate']), GLib.VariantType.new("(v)"),
 			Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
-				let response = conn.call_finish(query).get_child_value(0).unpack();
-				this._mediaRate = response.get_double();
+				try{
+					let response = conn.call_finish(query).get_child_value(0).unpack();
+					this._mediaRate = response.get_double();
+				} catch(err){
+					//not all players support rate (e.g. Nuvola) so if this exception is thrown, do nothing.
+					if(!err.message.startsWith("GDBus.Error:org.freedesktop.DBus.Error.InvalidArgs: No such property"))
+						throw err;
+				}
 			})
 		);
 	},
