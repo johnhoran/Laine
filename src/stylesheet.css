@@ -9,7 +9,6 @@
 	spacing:5px;
 }
 
-
 .simple-stream-label {
 	text-align: left;
 }
@@ -28,7 +27,7 @@
 }
 
 
-.stream:hover{
+.stream:active, .simple-stream:active {
 	background-color:#4c4c4c;
 }
 

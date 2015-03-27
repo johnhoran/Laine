@@ -197,6 +197,7 @@ const StreamBase = new Lang.Class({
 		this.actor.set_vertical(false);
 		this.actor.set_track_hover(true);
 		this.actor.set_reactive(true);
+		this.focused = false;
 
 		this.actor.add(this._volCtrl, {expand:true});
 
@@ -301,6 +302,20 @@ const StreamBase = new Lang.Class({
 		}
 	},
 
+	_setFocused: function(activate){
+		let focusChanged = activate != this.focused;
+		if(focusChanged){
+			this.focused = activate;
+			if(activate){
+				this.actor.add_style_pseudo_class('active');
+				this.actor.grab_key_focus();
+			} else {
+				this.actor.remove_style_pseudo_class('active');
+			}
+
+		}
+	},
+
 	_onDestroy: function(){
 		if(this._paPath != null){
 			this._paDBus.signal_unsubscribe(this._sigVol);
@@ -308,7 +323,8 @@ const StreamBase = new Lang.Class({
 		}
 	},
 
-	_raise: function(){}
+	_raise: function(){},
+	_onKeyPressEvent:function(){}
 
 });
 
@@ -319,6 +335,8 @@ const SimpleStream = new Lang.Class({
 	_init: function(parent, paconn, path, sInfo){
 		this.parent(parent, paconn);
 		this.setPAPath(path);
+
+		this.actor.add_style_class_name('simple-stream');
 
 		this._procID = parseInt(sInfo['application.process.id']);
 
@@ -358,7 +376,31 @@ const SimpleStream = new Lang.Class({
 				this._parent._getTopMenu().close(BoxPointer.PopupAnimation.FULL);
 			}
 		}));
+
+		this.actor.connect('key-press-event', Lang.bind(this, this._onKeyPressEvent));
+
+		this.actor.can_focus = true;
+		this.actor.connect('notify::hover', Lang.bind(this, function(){this._setFocused(this.actor.hover);}));
+		this.actor.connect('key-focus-in', Lang.bind(this, function(){this._setFocused(true);}));
+		this.actor.connect('key-focus-out', Lang.bind(this, function(){this._setFocused(false)}));
+	},
+
+	_onKeyPressEvent: function(actor, event) {
+		let key = event.get_key_symbol();
+
+		if(key == Clutter.KEY_Right || key == Clutter.KEY_Left){
+			this._volSlider.onKeyPressEvent(actor, event);
+			return Clutter.EVENT_STOP;
+		}
+		else if(key == Clutter.KEY_space || key == Clutter.KEY_Return) {
+			this.setVolume(!this._muteVal);
+			return Clutter.EVENT_STOP;
+		}
+
+		return this.parent(actor, event);
 	}
+
+
 });
 
 const MPRISControl = new Lang.Class({
