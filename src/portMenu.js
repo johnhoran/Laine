@@ -99,7 +99,11 @@ const PortMenu = new Lang.Class({
 			this._slider.onKeyPressEvent(actor, event);
 			return Clutter.EVENT_STOP;
 		}
-		else if(key == Clutter.KEY_space || key == Clutter.KEY_Return) {
+		else if(key == Clutter.KEY_space){
+			this.setVolume(!this._activeDevice._muteVal);
+			return Clutter.EVENT_STOP;
+		}
+		else if(key == Clutter.KEY_Return) {
 			this._setOpenState(!this._getOpenState());
 			return Clutter.EVENT_STOP;
 		}
