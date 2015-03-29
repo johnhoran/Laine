@@ -36,6 +36,7 @@
 	clear:left;
 }
 
+/*
 .mpris-streadm{
 	background-gradient-start: rgba(76,76,76,0);
 	background-gradient-end: rgba(76,76,76,1);
@@ -44,7 +45,7 @@
 
 .mpris-stream{
 	background:rgba(76,76,76,0.6);
-}
+}*/
 
 .mpris-label-subtext {
 	font-weight: lighter;

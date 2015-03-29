@@ -88,6 +88,7 @@ const PortMenu = new Lang.Class({
 		this._sigSkR = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', type+'Removed',
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onDevChange), null );
 
+		this.actor.connect('scroll-event', Lang.bind(this, this.scroll));
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 	},
 

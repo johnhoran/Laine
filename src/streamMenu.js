@@ -383,6 +383,7 @@ const SimpleStream = new Lang.Class({
 		this.actor.connect('notify::hover', Lang.bind(this, function(){this._setFocused(this.actor.hover);}));
 		this.actor.connect('key-focus-in', Lang.bind(this, function(){this._setFocused(true);}));
 		this.actor.connect('key-focus-out', Lang.bind(this, function(){this._setFocused(false)}));
+		this.actor.connect('scroll-event', Lang.bind(this._volSlider, this._volSlider._onScrollEvent));
 	},
 
 	_onKeyPressEvent: function(actor, event) {
