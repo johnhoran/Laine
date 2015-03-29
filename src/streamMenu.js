@@ -548,6 +548,7 @@ const MPRISStream = new Lang.Class({
 		this._dbus = dbus;
 		this._mediaLength = 0;
 		this._sigFVol = this._sigFMute = -1;
+		this.actor.add_style_class_name("mpris-stream");
 
 		this.unsetPAStream();
 
@@ -661,6 +662,11 @@ const MPRISStream = new Lang.Class({
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 
 		this._label.connect('button-press-event', Lang.bind(this, this._raise));
+
+
+		this._posSlider.actor.connect('notify::hover', Lang.bind(this, function(){log("c");}));
+		this._posSlider.actor.connect('key-focus-in', Lang.bind(this, function(){log("b");}));
+		this._posSlider.actor.connect('key-focus-out', Lang.bind(this, function(){log("a");}));
 	},
 
 		//Async functions
