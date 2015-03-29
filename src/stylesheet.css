@@ -28,7 +28,7 @@
 
 
 .stream:active, .simple-stream:active {
-	background-color:#4c4c4c;
+	background-color:rgba(238, 238, 236, 0.1);/*#4c4c4c;*/
 }
 
 .sink-icon {
@@ -36,16 +36,22 @@
 	clear:left;
 }
 
-/*
-.mpris-streadm{
+
+.mpris-stream:active-top{
+	background-gradient-start: rgba(76,76,76,1);
+	background-gradient-end: rgba(76,76,76,0);
+	background-gradient-direction: vertical;
+}
+
+.mpris-stream:active{
+	background:rgb(76,76,76);
+}
+
+.mpris-stream:active-bottom{
 	background-gradient-start: rgba(76,76,76,0);
 	background-gradient-end: rgba(76,76,76,1);
 	background-gradient-direction: vertical;
 }
-
-.mpris-stream{
-	background:rgba(76,76,76,0.6);
-}*/
 
 .mpris-label-subtext {
 	font-weight: lighter;

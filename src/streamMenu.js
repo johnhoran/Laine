@@ -665,9 +665,26 @@ const MPRISStream = new Lang.Class({
 		this._label.connect('button-press-event', Lang.bind(this, this._raise));
 
 
-		this._posSlider.actor.connect('notify::hover', Lang.bind(this, function(){log("c");}));
-		this._posSlider.actor.connect('key-focus-in', Lang.bind(this, function(){log("b");}));
-		this._posSlider.actor.connect('key-focus-out', Lang.bind(this, function(){log("a");}));
+		this._volSlider.actor.set_track_hover(true);
+		this._volSlider.actor.connect('notify::hover', Lang.bind(this, function(){
+			this._setFocused(this._volSlider.actor.hover, 'active-top');	
+		}));
+		this._posSlider.actor.set_track_hover(true);
+		this._posSlider.actor.connect('notify::hover', Lang.bind(this, function(){
+			this._setFocused(this._posSlider.actor.hover, 'active-bottom');	
+		}));
+
+		this._volSlider.actor.connect('key-focus-in', Lang.bind(this, function(){ this._setFocused(true, 'active-top'); }));
+		this._volSlider.actor.connect('key-focus-out', Lang.bind(this, function(){ this._setFocused(false, 'active-top'); }));
+		this._posSlider.actor.connect('key-focus-in', Lang.bind(this, function(){ this._setFocused(true, 'active-bottom'); }));
+		this._posSlider.actor.connect('key-focus-out', Lang.bind(this, function(){ this._setFocused(false, 'active-bottom'); }));
+	},
+
+	_setFocused: function(activate, type){
+		if(activate)
+			this.actor.add_style_pseudo_class(type);
+		else
+			this.actor.remove_style_pseudo_class(type); 
 	},
 
 		//Async functions
