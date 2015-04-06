@@ -37,6 +37,7 @@ const PortMenu = new Lang.Class({
 		this._devices = {};
 
 		this._icon = new St.Icon({style_class: 'sink-icon'});
+		this._nameLbl = new St.Label({text:"test"});
 		let muteBtn = new St.Button({child: this._icon});
 		this._slider = new Slider.Slider(0);
 
@@ -64,6 +65,7 @@ const PortMenu = new Lang.Class({
 
 		//Laying stuff out
 		this.actor.add(muteBtn);
+		this.actor.add(this._nameLbl);
 		this.actor.add(this._slider.actor, {expand:true});
 		this.actor.add(this._expandBtn);
 
