@@ -9,5 +9,12 @@
 				upper value set, but increasing it manually beyond 150% is proably inadvisable. 
 			</description>
 		</key>
+		<key type="b" name="show-port-label">
+			<default>false</default>
+			<summary>Show port labels</summary>
+			<description>
+				Show labels describing the currently selected port.
+			</description>
+		</key>
 	</schema>
 </schemalist>
