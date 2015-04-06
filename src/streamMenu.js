@@ -323,8 +323,7 @@ const StreamBase = new Lang.Class({
 		}
 	},
 
-	_raise: function(){},
-	_onKeyPressEvent:function(){}
+	_raise: function(){}
 
 });
 
@@ -398,7 +397,7 @@ const SimpleStream = new Lang.Class({
 			return Clutter.EVENT_STOP;
 		}
 
-		return this.parent(actor, event);
+		return Clutter.EVENT_PROPAGATE;
 	}
 
 
@@ -570,9 +569,9 @@ const MPRISStream = new Lang.Class({
 			})
 		);
 
-		this._playBtn = new St.Button({child: new St.Icon({icon_name: 'media-playback-start-symbolic'}), style_class:'mpris-play-button'});
-		this._prevBtn = new St.Button({child: new St.Icon({icon_name: 'media-skip-backward-symbolic'}), style_class:'mpris-previous-button'});
-		this._nextBtn = new St.Button({child: new St.Icon({icon_name: 'media-skip-forward-symbolic'}), style_class:'mpris-next-button'});
+		this._playBtn = new St.Button({child: new St.Icon({icon_name: 'media-playback-start-symbolic'}), style_class:'mpris-play-button', reactive:true, can_focus:true});
+		this._prevBtn = new St.Button({child: new St.Icon({icon_name: 'media-skip-backward-symbolic'}), style_class:'mpris-previous-button', reactive:true, can_focus:true});
+		this._nextBtn = new St.Button({child: new St.Icon({icon_name: 'media-skip-forward-symbolic'}), style_class:'mpris-next-button', reactive:true, can_focus:true});
 
 		this._posSlider = new Slider.Slider(0);
 		this._timeLapLbl = new St.Label({style_class:'mpris-time-label'});
@@ -666,6 +665,8 @@ const MPRISStream = new Lang.Class({
 
 
 		this._volSlider.actor.set_track_hover(true);
+		this._volSlider.actor.connect('key-press-event', Lang.bind(this, this._onVolSliderKeyPress));
+
 		this._volSlider.actor.connect('notify::hover', Lang.bind(this, function(){
 			this._setFocused(this._volSlider.actor.hover, 'active-top');	
 		}));
@@ -955,6 +956,16 @@ const MPRISStream = new Lang.Class({
 			this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.mpris.MediaPlayer2.Player", "Next",
 				null, null, Gio.DBusCallFlags.NONE, -1, null, null);
 		}
+	},
+
+	_onVolSliderKeyPress: function(actor, event) {
+		let key = event.get_key_symbol();
+
+		if(key == Clutter.KEY_space || key == Clutter.KEY_Return) {
+			this.setVolume(!this._muteVal);
+			return Clutter.EVENT_STOP;
+		}
+		return Clutter.EVENT_PROPAGATE;
 	},
 
 	_onPosSliderChange: function(slider, value, property){

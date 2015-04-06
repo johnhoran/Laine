@@ -28,7 +28,7 @@
 
 
 .stream:active, .simple-stream:active {
-	background-color:rgba(238, 238, 236, 0.1);/*#4c4c4c;*/
+	background-color:#4c4c4c;
 }
 
 .sink-icon {
@@ -113,7 +113,8 @@
 	color: #e6e6e6;
 }
 
-.mpris-player-controls > StButton:hover {
+.mpris-player-controls > StButton:hover, 
+.mpris-player-controls > StButton:focus {
 	color: white;
 	background-color: #4c4c4c;
 }
