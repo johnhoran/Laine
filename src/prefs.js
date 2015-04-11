@@ -12,6 +12,8 @@ const KEY_PORT_LABEL = "show-port-label";
 
 function init(){
 	Convenience.initTranslations();
+	
+	
 }
 
 const LainePrefsWidget = new GObject.Class({
@@ -41,10 +43,11 @@ const LainePrefsWidget = new GObject.Class({
 		//-----------------------------------------------------------
 
 		let showLabelsSwitch = Gtk.Switch.new();
-		showLabelsSwitch.set_state(this._settings.get_boolean(KEY_PORT_LABEL));
 		showLabelsSwitch.connect('state-set', Lang.bind(this, function(src){
-				this._settings.set_boolean(KEY_PORT_LABEL, src.get_state());
+				this._setPortLabelVisibility(src.get_state());
+
 		}));
+		showLabelsSwitch.set_state(this._settings.get_boolean(KEY_PORT_LABEL));
 
 		this.attach(new Gtk.Label({
 			label: _("Show active port label"),
@@ -54,6 +57,11 @@ const LainePrefsWidget = new GObject.Class({
 
 		//-----------------------------------------------------------
 
+	},
+
+	_setPortLabelVisibility:function(visible){
+				this._settings.set_boolean(KEY_PORT_LABEL, visible);
+				log("setVisibl");
 	}
 });
 

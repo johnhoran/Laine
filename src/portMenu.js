@@ -65,8 +65,11 @@ const PortMenu = new Lang.Class({
 
 		//Laying stuff out
 		this.actor.add(muteBtn);
-		this.actor.add(this._nameLbl);
-		this.actor.add(this._slider.actor, {expand:true});
+		let container = new St.BoxLayout({vertical:true});
+		container.add(this._nameLbl);
+		container.add(this._slider.actor, {expand:true});
+		this.actor.add(container, {expand:true});
+		//this.actor.add(this._slider.actor, {expand:true});
 		this.actor.add(this._expandBtn);
 
 		this.actor.add_style_class_name('stream');
@@ -81,6 +84,8 @@ const PortMenu = new Lang.Class({
 				this.setVolume(!this._activeDevice._muteVal);
 			})
 		);
+
+
 
 
 		this._sigFall = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'Fallback'+type+'Updated',
@@ -209,6 +214,7 @@ const Port = new Lang.Class({
 			Lang.bind(this, function(conn, query){
 				this._name = conn.call_finish(query).get_child_value(0).unpack().get_string()[0];
 				this.label.set_text(this.getName());
+				this.emit('name-set');
 			})
 		);
 
@@ -220,6 +226,19 @@ const Port = new Lang.Class({
 		if(this._device._numPorts > 1)
 			name = name.concat(": ", this._name);
 		return name;
+	},
+
+	_giveName: function(textCallback){
+		let name = this._name;
+		let sigId;
+		if(name === undefined){
+			sigId = this.connect('name-set', Lang.bind(this, function(){
+				textCallback(this.getName());
+				this.disconnect(sigId);
+			}));
+		} else {
+			textCallback(this.getName());
+		}
 	}
 
 });
@@ -331,6 +350,11 @@ const Device = new Lang.Class({
 
 		this._activePort = port;
 		this._activePort.setOrnament(PopupMenu.Ornament.DOT);
+
+		port._giveName(Lang.bind(this, function(name){
+			this._base._nameLbl.set_text(name);
+		}));
+
 		this._base._setMuteIcon(this._activePort._name);
 	},
 
