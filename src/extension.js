@@ -92,6 +92,7 @@ const Laine = new Lang.Class({
 
 			sinkMenu.connect('icon-changed', Lang.bind(this, this._onUpdateIcon));
 			sinkMenu.connect('fallback-updated', Lang.bind(streamMenu, streamMenu._onSetDefaultSink));
+			sourceMenu.connect('fallback-updated', Lang.bind(sourceMenu, sourceMenu._onSetDefaultSource));
 
 			this._setIndicatorIcon(sinkMenu._slider.value);
 			this._addPulseAudioListeners();

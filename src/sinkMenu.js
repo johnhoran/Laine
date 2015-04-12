@@ -13,9 +13,6 @@ const Signals = imports.signals;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const PortMenu = Me.imports.portMenu;
 
-const VOLUME_NOTIFY_ID = 1;
-const PA_MAX = 65536;
-
 const SinkMenu = new Lang.Class({
 	Name: 'SinkMenu',
 	Extends: PortMenu.PortMenu,

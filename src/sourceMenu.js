@@ -13,9 +13,6 @@ const Signals = imports.signals;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const PortMenu = Me.imports.portMenu;
 
-const VOLUME_NOTIFY_ID = 1;
-const PA_MAX = 65536;
-
 const SourceMenu = new Lang.Class({
 	Name: 'SourceMenu',
 	Extends: PortMenu.PortMenu,
@@ -44,6 +41,8 @@ const SourceMenu = new Lang.Class({
 			}), null );
 		this._sigNewStr = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'RecordStreamRemoved',
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onRemoveStream), null );
+
+		this.connect('fallback-updated', Lang.bind(this, this._onSetDefaultSource));
 		this.actor.connect('destroy', Lang.bind(this, this._onSubDestroy));
 	},
 
@@ -92,6 +91,13 @@ const SourceMenu = new Lang.Class({
 
 	_isVisible: function(){
 		return (this._streams.length > 0);
+	},
+
+	_onSetDefaultSource: function(src, source){
+		for(let s in this._streams){
+			this._paDBus.call(null, this._streams[s], 'org.PulseAudio.Core1.Stream', 'Move',
+				GLib.Variant.new('(o)', [source]), null, Gio.DBusCallFlags.NONE, -1, null, null);
+		}
 	},
 
 	_onSubDestroy: function(){
