@@ -316,7 +316,7 @@ const Device = new Lang.Class({
 			)
 		);
 		this._setOverdriveLevel();
-		let _sigOverdrive = this._settings.connect('changed::'+this._key_PA_OVERDRIVE, Lang.bind(this, this._setOverdriveLevel));
+		this._sigOverdrive = this._settings.connect('changed::'+this._key_PA_OVERDRIVE, Lang.bind(this, this._setOverdriveLevel));
 
 		this._base.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 	},
