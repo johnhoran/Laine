@@ -315,6 +315,8 @@ const Device = new Lang.Class({
 				}
 			)
 		);
+		this._setOverdriveLevel();
+		let _sigOverdrive = this._settings.connect('changed::'+this._key_PA_OVERDRIVE, Lang.bind(this, this._setOverdriveLevel));
 
 		this._base.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 	},
@@ -448,7 +450,11 @@ const Device = new Lang.Class({
 	},
 
 	_getPAMaxPref: function(){
-		return (PA_MAX * this._settings.get_int(this._key_PA_OVERDRIVE))/100;
+		return (PA_MAX * this._pa_overdrive)/100;
+	},
+
+	_setOverdriveLevel: function(){
+		this._pa_overdrive = this._settings.get_int(this._key_PA_OVERDRIVE);
 	},
 
 	//Event handlers
@@ -511,6 +517,7 @@ const Device = new Lang.Class({
 	},
 
 	_onDestroy: function(){
+		this._settings.disconnect(this._sigOverdrive);
 		if(this._sigVol != 0){
 			this._paDBus.signal_unsubscribe(this._sigVol);
 			this._paDBus.signal_unsubscribe(this._sigMute);
