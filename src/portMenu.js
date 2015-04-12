@@ -86,6 +86,8 @@ const PortMenu = new Lang.Class({
 		);
 
 
+		this._settings = Convenience.getSettings();
+		this._key_SHOW_LABEL = Me.imports.prefs.KEY_PORT_LABEL;
 
 
 		this._sigFall = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'Fallback'+type+'Updated',
@@ -97,6 +99,9 @@ const PortMenu = new Lang.Class({
 
 		this.actor.connect('scroll-event', Lang.bind(this, this.scroll));
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
+		this._sigShowLbl = this._settings.connect('changed::'+this._key_SHOW_LABEL, Lang.bind(this, this._setNameLabelVisiblity));
+
+		this._setNameLabelVisiblity();
 	},
 
 
@@ -162,6 +167,14 @@ const PortMenu = new Lang.Class({
 			this._expandBtn.hide();
 	},
 
+	_setNameLabelVisiblity: function(){
+		let vis = this._settings.get_boolean(this._key_SHOW_LABEL);
+		if(vis)
+			this._nameLbl.show();
+		else
+			this._nameLbl.hide();
+	},
+
 	_updateVisibility: function(){
 		let vis = this._isVisible();
 		if(vis)
@@ -194,6 +207,8 @@ const PortMenu = new Lang.Class({
 		this._paDBus.signal_unsubscribe(this._sigFall);
 		this._paDBus.signal_unsubscribe(this._sigSkA);
 		this._paDBus.signal_unsubscribe(this._sigSkR);
+
+		this._settings.disconnect(this._sigShowLbl);
 	}
 	
 });
@@ -353,9 +368,8 @@ const Device = new Lang.Class({
 
 		port._giveName(Lang.bind(this, function(name){
 			this._base._nameLbl.set_text(name);
+			this._base._setMuteIcon(this._activePort._name);
 		}));
-
-		this._base._setMuteIcon(this._activePort._name);
 	},
 
 	unsetActiveDevice: function(){

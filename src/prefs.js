@@ -41,27 +41,19 @@ const LainePrefsWidget = new GObject.Class({
 		this.attach(volumeOverdrive, 20, 0, 40, 1);
 
 		//-----------------------------------------------------------
-
-		let showLabelsSwitch = Gtk.Switch.new();
-		showLabelsSwitch.connect('state-set', Lang.bind(this, function(src){
-				this._setPortLabelVisibility(src.get_state());
-
-		}));
-		showLabelsSwitch.set_state(this._settings.get_boolean(KEY_PORT_LABEL));
-
 		this.attach(new Gtk.Label({
 			label: _("Show active port label"),
 			halign: Gtk.Align.START
 		}), 0, 1, 1, 1);
-		this.attach(showLabelsSwitch, 20, 1, 1, 1);
+
+		this._showLabelSwitch = new Gtk.Switch({active: this._settings.get_boolean(KEY_PORT_LABEL)});
+        this._showLabelSwitch.connect('notify::active', Lang.bind(this, function(src){
+			this._settings.set_boolean(KEY_PORT_LABEL, src.active);
+        })); 
+		this.attach(this._showLabelSwitch, 20, 1, 1, 1);
 
 		//-----------------------------------------------------------
 
-	},
-
-	_setPortLabelVisibility:function(visible){
-				this._settings.set_boolean(KEY_PORT_LABEL, visible);
-				log("setVisibl");
 	}
 });
 
