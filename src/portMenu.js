@@ -280,10 +280,10 @@ const Device = new Lang.Class({
 			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
 				let properties = conn.call_finish(query).get_child_value(0).unpack();
 				let name = '['+this._path+']';
-
-				for(let i = 0; i < properties.n_children(); i++){
+				for(let i = properties.n_children(); i-- > 0;){
 					let [index, value]= properties.get_child_value(i).unpack();
-					if(index.get_string()[0] == 'alsa.card_name'){
+					let key = index.get_string()[0];
+					if(key == 'alsa.card_name' || key == 'device.description'){
 						name = new String();
 						for(let j = 0; j < value.n_children() -1; j++)
 							name += String.fromCharCode(value.get_child_value(j).get_byte());
