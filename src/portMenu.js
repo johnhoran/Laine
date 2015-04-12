@@ -185,7 +185,7 @@ const PortMenu = new Lang.Class({
 
 	_onDevChange: function(conn, sender, object, iface, signal, param, user_data){
 		let addr = param.get_child_value(0).get_string()[0];
-
+		
 		if(signal == 'Fallback'+ this._type +'Updated' ){
 			this._activeDevice.unsetActiveDevice();
 			this._activeDevice = this._devices[addr];
