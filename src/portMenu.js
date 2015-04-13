@@ -284,9 +284,7 @@ const Device = new Lang.Class({
 					let [index, value]= properties.get_child_value(i).unpack();
 					let key = index.get_string()[0];
 					if(key == 'alsa.card_name' || key == 'device.description'){
-						name = new String();
-						for(let j = 0; j < value.n_children() -1; j++)
-							name += String.fromCharCode(value.get_child_value(j).get_byte());
+						name = new String(value.unpack());
 						break;
 					}
 				}
