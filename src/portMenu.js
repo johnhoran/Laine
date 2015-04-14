@@ -230,7 +230,6 @@ const Port = new Lang.Class({
 			Lang.bind(this, function(conn, query){
 				let response = conn.call_finish(query).get_child_value(0);
 
-
 				for(let i = 0; i < response.n_children(); i++){
 					let [key, value] = response.get_child_value(i).unpack();
 					key = key.get_string()[0];
@@ -238,10 +237,10 @@ const Port = new Lang.Class({
 						this._type = value.unpack().get_string()[0];
 					else if(key == "Description")
 						this._name = value.unpack().get_string()[0];
-
-					this.label.set_text(this.getName());
-					this.emit('name-set');
 				}
+
+				this.label.set_text(this.getName());
+				this.emit('name-set');
 			})
 		);
 
