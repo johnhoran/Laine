@@ -222,7 +222,30 @@ const Port = new Lang.Class({
 		this._paDBus = paconn;
 		this._path = path;
 		this._device = device
+		this._type = '';
 
+		this._paDBus.call(null, path, 'org.freedesktop.DBus.Properties', 'GetAll',
+			GLib.Variant.new('(s)', ['org.PulseAudio.Core1.DevicePort']), 
+			GLib.VariantType.new("(a{sv})"), Gio.DBusCallFlags.NONE, -1, null,
+			Lang.bind(this, function(conn, query){
+				let response = conn.call_finish(query).get_child_value(0);
+
+
+				for(let i = 0; i < response.n_children(); i++){
+					let [key, value] = response.get_child_value(i).unpack();
+					key = key.get_string()[0];
+					if(key == "Name")
+						this._type = value.unpack().get_string()[0];
+					else if(key == "Description")
+						this._name = value.unpack().get_string()[0];
+
+					this.label.set_text(this.getName());
+					this.emit('name-set');
+				}
+			})
+		);
+
+		/*
 		this._paDBus.call(null, path, 'org.freedesktop.DBus.Properties', 'Get',
 			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.DevicePort', 'Description']), 
 			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
@@ -231,7 +254,7 @@ const Port = new Lang.Class({
 				this.label.set_text(this.getName());
 				this.emit('name-set');
 			})
-		);
+		);*/
 
 		this.connect('activate', Lang.bind(this._device, this._device._onPortSelect));
 	},
@@ -248,11 +271,11 @@ const Port = new Lang.Class({
 		let sigId;
 		if(name === undefined){
 			sigId = this.connect('name-set', Lang.bind(this, function(){
-				textCallback(this.getName());
+				textCallback(this.getName(), this._type);
 				this.disconnect(sigId);
 			}));
 		} else {
-			textCallback(this.getName());
+			textCallback(this.getName(), this._type);
 		}
 	}
 
@@ -278,17 +301,23 @@ const Device = new Lang.Class({
 		this._paDBus.call(null, this._path, 'org.freedesktop.DBus.Properties', 'Get',
 			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'PropertyList']),
 			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
-				let properties = conn.call_finish(query).get_child_value(0).unpack();
 				let name = '['+this._path+']';
-				for(let i = properties.n_children(); i-- > 0;){
-					let [index, value]= properties.get_child_value(i).unpack();
-					let key = index.get_string()[0];
-					if(key == 'alsa.card_name' || key == 'device.description'){
-						name = new String(value.unpack());
-						break;
+				try{
+					let properties = conn.call_finish(query).get_child_value(0).unpack();
+					for(let i = properties.n_children(); i-- > 0;){
+						let [index, value]= properties.get_child_value(i).unpack();
+						let key = index.get_string()[0];
+						if(key == 'alsa.card_name' || key == 'device.description'){
+							name = String(value.unpack());
+							break;
+						}
 					}
+				} catch(err){
+					//pulseaudio does something which creates, and then deletes a card when switching sources.  Therefore the listener will trigger this,
+					//but by the time we can query anything from it, it's already gone.  Therefore ignore this exception.
+					if(!err.message.startsWith("GDBus.Error:org.freedesktop.DBus.Error.UnknownMethod: Method \"Get\" with signature \"ss\""))
+						throw err;
 				}
-
 				this._name = name;
 			})
 		);
@@ -297,18 +326,25 @@ const Device = new Lang.Class({
 			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'Ports']), 
 			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
 			Lang.bind(this, function(conn, query){
-					let portPaths = conn.call_finish(query).get_child_value(0).unpack();
-					this._numPorts = portPaths.n_children(); 
-					for(let j = 0; j < this._numPorts; j++){
-						let val = portPaths.get_child_value(j);
-						if(val != null) {
-							let portPath = val.get_string()[0];
-							let port = new Port(portPath, this._paDBus, this);
-							this._ports[portPath] = port;
-							this._base.menu.addMenuItem(port);
+					try{
+						let portPaths = conn.call_finish(query).get_child_value(0).unpack();
+						this._numPorts = portPaths.n_children(); 
+						for(let j = 0; j < this._numPorts; j++){
+							let val = portPaths.get_child_value(j);
+							if(val != null) {
+								let portPath = val.get_string()[0];
+								let port = new Port(portPath, this._paDBus, this);
+								this._ports[portPath] = port;
+								this._base.menu.addMenuItem(port);
 
-							this._base._updateExpandBtnVisiblity();
+								this._base._updateExpandBtnVisiblity();
+							}
 						}
+					} catch(err){
+						//pulseaudio does something which creates, and then deletes a card when switching sources.  Therefore the listener will trigger this,
+						//but by the time we can query anything from it, it's already gone.  Therefore ignore this exception.
+						if(!err.message.startsWith("GDBus.Error:org.freedesktop.DBus.Error.UnknownMethod: Method \"Get\" with signature \"ss\""))
+							throw err;
 					}
 				}
 			)
@@ -366,9 +402,9 @@ const Device = new Lang.Class({
 		this._activePort = port;
 		this._activePort.setOrnament(PopupMenu.Ornament.DOT);
 
-		port._giveName(Lang.bind(this, function(name){
+		port._giveName(Lang.bind(this, function(name, type){
 			this._base._nameLbl.set_text(name);
-			this._base._setMuteIcon(this._activePort._name);
+			this._base._setMuteIcon(type);
 		}));
 	},
 

@@ -22,9 +22,9 @@ const SinkMenu = new Lang.Class({
 	},
 
 	_setMuteIcon: function(desc){
-		if(desc == 'Headphones')
+		if(desc.endsWith("headphones"))
 			this._icon.icon_name = 'audio-headphones-symbolic';
-		else if(desc == 'Digital Output (S/PDIF)' || desc == 'HDMI / DisplayPort')
+		else if(desc.startsWith("hdmi") || desc.startsWith("iec958"))
 			this._icon.icon_name = 'audio-card-symbolic';
 		else
 			this._icon.icon_name = 'audio-speakers-symbolic';
