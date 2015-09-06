@@ -9,6 +9,7 @@ const _ = Gettext.gettext;
 
 const KEY_PA_OVER = "volume-overdrive";
 const KEY_PORT_LABEL = "show-port-label";
+const KEY_MERGE_CONTROLS = "merge-controls";
 
 function init(){
 	Convenience.initTranslations();
@@ -53,6 +54,16 @@ const LainePrefsWidget = new GObject.Class({
 		this.attach(this._showLabelSwitch, 20, 1, 1, 1);
 
 		//-----------------------------------------------------------
+
+		this.attach(new Gtk.Label({
+			label: _("Merge controls into aggregate menu"),
+			halign: Gtk.Align.START
+		}), 0, 2, 1, 1);
+		this._mergeAggregateSwitch = new Gtk.Switch({active: this._settings.get_boolean(KEY_MERGE_CONTROLS)});
+		this._mergeAggregateSwitch.connect('notify::active', Lang.bind(this, function(src){
+			this._settings.set_boolean(KEY_MERGE_CONTROLS, src.active);
+		}));
+		this.attach(this._mergeAggregateSwitch, 20, 2, 1, 1);
 
 	}
 });

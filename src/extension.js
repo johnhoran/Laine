@@ -64,56 +64,37 @@ function connectToPADBus(callback){
 	);
 }
 
+const LaineCore = new Lang.Class({
+	Name: 'LaineCore',
+	Extends: PopupMenu.PopupMenuSection,
 
-
-const Laine = new Lang.Class({
-	Name: 'Laine',
-	Extends: PanelMenu.Button,
-
-	_init: function(){
-		this.parent(0.0);
-
+	_init: function(container){
+		this.parent();
 		this._icon = new St.Icon({ icon_name: 'system-run-symbolic', style_class: 'system-status-icon' });
-
-		let hbox = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
-		hbox.add_child(this._icon);
-
-		this.actor.add_child(hbox);
-
-		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
 
 		connectToPADBus(Lang.bind(this, function(conn, manual){
 			this._paDBus = conn;
 			this._moduleLoad = manual;
 
-			let sinkMenu = new SinkMenu.SinkMenu(this, this._paDBus);
-			let sourceMenu = new SourceMenu.SourceMenu(this, this._paDBus);
-			let streamMenu = new StreamMenu.StreamMenu(this, this._paDBus);
+			this._sinkMenu = new SinkMenu.SinkMenu(this, this._paDBus);
+			this._sourceMenu = new SourceMenu.SourceMenu(this, this._paDBus);
+			this._streamMenu = new StreamMenu.StreamMenu(this, this._paDBus);
 
-			sinkMenu.connect('icon-changed', Lang.bind(this, this._onUpdateIcon));
-			sinkMenu.connect('fallback-updated', Lang.bind(streamMenu, streamMenu._onSetDefaultSink));
-			sourceMenu.connect('fallback-updated', Lang.bind(sourceMenu, sourceMenu._onSetDefaultSource));
+			this._sinkMenu.connect('icon-changed', Lang.bind(this, this._onUpdateIcon));
+			this._sinkMenu.connect('fallback-updated', Lang.bind(this._streamMenu, this._streamMenu._onSetDefaultSink));
+			this._sourceMenu.connect('fallback-updated', Lang.bind(this._sourceMenu, this._sourceMenu._onSetDefaultSource));
 
-			this._setIndicatorIcon(sinkMenu._slider.value);
+			this._setIndicatorIcon(this._sinkMenu._slider.value);
 			this._addPulseAudioListeners();
 
-			this.menu.addMenuItem(sinkMenu);
-			this.menu.addMenuItem(sourceMenu);
-			this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-			this.menu.addMenuItem(streamMenu);
+			this.addMenuItem(this._sinkMenu);
+			this.addMenuItem(this._sourceMenu);
+			this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+			this.addMenuItem(this._streamMenu);
 
-			this.actor.connect('scroll-event', Lang.bind(sinkMenu, sinkMenu.scroll));
-
-			//Everything good up to this point, lets replace the built in sound indicator
-			if(Main.panel.statusArea.laine != 'undefined')
-				delete Main.panel.statusArea.laine;
-
-			Main.panel.addToStatusArea('laine', this);
-			Main.panel.statusArea.aggregateMenu._volume._volumeMenu.actor.hide();
-			Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.hide();
+			container.layout();
 		}));
 
-		return 0;
 	},
 
 	_addPulseAudioListeners: function(){
@@ -191,7 +172,7 @@ const Laine = new Lang.Class({
 	},
 
 	_getTopMenu: function(){
-		return menu;
+		return this;
 	},
 
 	_onDestroy: function(){
@@ -252,8 +233,38 @@ const Laine = new Lang.Class({
 			*/
 		}
 	}
+});
 
 
+
+const Laine = new Lang.Class({
+	Name: 'Laine',
+	Extends: PanelMenu.Button,
+
+	_init: function(){
+		this.parent(0.0, "", false);
+
+		this.laineCore = new LaineCore(this);
+		return 0;
+	},
+
+	layout: function(){
+		let hbox = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
+		hbox.add_child(this.laineCore._icon);
+
+		this.actor.add_child(hbox);
+		this.menu.addMenuItem(this.laineCore);
+
+		this.actor.connect('destroy', Lang.bind(this.laineCore, this.laineCore._onDestroy));
+		this.actor.connect('scroll-event', Lang.bind(this.laineCore._sinkMenu, this.laineCore._sinkMenu.scroll));
+
+		//Everything good up to this point, lets replace the built in sound indicator
+		if(Main.panel.statusArea.laine != 'undefined')
+			delete Main.panel.statusArea.laine;
+		Main.panel.addToStatusArea('laine', this);
+		Main.panel.statusArea.aggregateMenu._volume._volumeMenu.actor.hide();
+		Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.hide();
+	}
 });
 
 let _menuButton;

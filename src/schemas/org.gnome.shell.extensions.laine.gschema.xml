@@ -16,5 +16,12 @@
 				Show labels describing the currently selected port.
 			</description>
 		</key>
+		<key type="b" name="merge-controls">
+			<default>false</default>
+			<summary>Merge controls into aggregate menu</summary>
+			<description>
+				Show controls as part of aggregate menu instead of in seperate dropdown.
+			</description>
+		</key>
 	</schema>
 </schemalist>
