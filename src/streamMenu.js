@@ -56,8 +56,8 @@ const StreamMenu = new Lang.Class({
 
 	_addExistingStreams: function(){
 		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.freedesktop.DBus.Properties', 'Get',
-			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', 'PlaybackStreams']), 
-			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null, 
+			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', 'PlaybackStreams']),
+			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
 			Lang.bind(this, function(conn, query){
 				let response = conn.call_finish(query).get_child_value(0).unpack();
 				for(let i = 0; i < response.n_children(); i++)
@@ -68,7 +68,7 @@ const StreamMenu = new Lang.Class({
 
 	_addPAStream: function(path){
 		this._paDBus.call(null, path, 'org.freedesktop.DBus.Properties', 'Get',
-			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Stream', 'PropertyList']), 
+			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Stream', 'PropertyList']),
 			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
 				let streamInfo = conn.call_finish(query).get_child_value(0).unpack();
 
@@ -112,7 +112,7 @@ const StreamMenu = new Lang.Class({
 
 	_moveStreamToDefaultSink: function(path) {
 		this._paDBus.call(null, path, 'org.freedesktop.DBus.Properties', 'Get',
-			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Stream', 'Device']), GLib.VariantType.new('(v)'), 
+			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Stream', 'Device']), GLib.VariantType.new('(v)'),
 			Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
 				let resp = conn.call_finish(query);
 				resp = resp.get_child_value(0).unpack();
@@ -134,7 +134,7 @@ const StreamMenu = new Lang.Class({
 
 		for(let k in this._streams)
 				this._moveStreamToDefaultSink(k);
-		
+
 		for(let k in this._delegatedStreams){
 				let obj = this._delegatedStreams[k]._paPath;
 				this._moveStreamToDefaultSink(obj);
@@ -147,9 +147,9 @@ const StreamMenu = new Lang.Class({
 	},
 
 	_onRemoveStream: function(conn, sender, object, iface, signal, param, user_data){
-		
+
 		let streamPath = param.get_child_value(0).unpack();
-		
+
 		if(streamPath in this._streams){
 			this._streams[streamPath].destroy();
 			delete this._streams[streamPath];
@@ -202,7 +202,7 @@ const StreamBase = new Lang.Class({
 		this.actor.add(this._volCtrl, {expand:true});
 
 		//------------------------------------------------------------------
-		
+
 		this._muteBtn.connect('clicked', Lang.bind(this, function(){
 			this.setVolume(!this._muteVal);
 		}));
@@ -218,14 +218,14 @@ const StreamBase = new Lang.Class({
 		this._paPath = path;
 
 		this._paDBus.call(null, this._paPath, 'org.freedesktop.DBus.Properties', 'Get',
-			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Stream', 'Mute']), GLib.VariantType.new("(v)"), 
+			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Stream', 'Mute']), GLib.VariantType.new("(v)"),
 			Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
 				let result = conn.call_finish(query);
 				this.setVolume(result.get_child_value(0).unpack());
 			}));
 
 		this._paDBus.call(null, this._paPath, 'org.freedesktop.DBus.Properties', 'Get',
-			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Stream', 'Volume']), GLib.VariantType.new("(v)"), 
+			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Stream', 'Volume']), GLib.VariantType.new("(v)"),
 			Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
 				let result = conn.call_finish(query);
 				this.setVolume(result.get_child_value(0).unpack());
@@ -245,9 +245,9 @@ const StreamBase = new Lang.Class({
 		if(typeof volume === 'boolean' && this._paPath != null){
 			let val = GLib.Variant.new_boolean(volume);
 			this._paDBus.call(null, this._paPath, 'org.freedesktop.DBus.Properties', 'Set',
-				GLib.Variant.new('(ssv)', ['org.PulseAudio.Core1.Stream', 'Mute', val]), null, 
+				GLib.Variant.new('(ssv)', ['org.PulseAudio.Core1.Stream', 'Mute', val]), null,
 				Gio.DBusCallFlags.NONE, -1, null, null);
-		} 	
+		}
 		else if(typeof volume === 'number' && this._paPath != null){
 			if(volume > 1) volume = 1;
 			let max = this._volVariant.get_child_value(0).get_uint32();
@@ -272,7 +272,7 @@ const StreamBase = new Lang.Class({
 				}
 				targets = GLib.Variant.new_array(null, targets);
 				this._paDBus.call(null, this._paPath, 'org.freedesktop.DBus.Properties', 'Set',
-					GLib.Variant.new('(ssv)', ['org.PulseAudio.Core1.Stream', 'Volume', targets]), null, 
+					GLib.Variant.new('(ssv)', ['org.PulseAudio.Core1.Stream', 'Volume', targets]), null,
 					Gio.DBusCallFlags.NONE, -1, null, null);
 				if(this._muteVal)
 					this.setVolume(false);
@@ -364,7 +364,7 @@ const SimpleStream = new Lang.Class({
 			if('application.icon_name' in sInfo) iname = sInfo['application.icon_name'];
 			else iname = 'package_multimedia';
 			icon = new St.Icon({icon_name: iname, style_class: 'simple-stream-icon'});
-		} 
+		}
 
 		this._muteBtn.child = icon;
 		this._label.text = name;
@@ -458,7 +458,7 @@ const MPRISControl = new Lang.Class({
 
 					if(uname == null){
 						this._dbus.call('org.freedesktop.DBus', '/', "org.freedesktop.DBus", "GetNameOwner",
-							GLib.Variant.new('(s)', [path]), GLib.VariantType.new('(s)'), Gio.DBusCallFlags.NONE, -1, null, 
+							GLib.Variant.new('(s)', [path]), GLib.VariantType.new('(s)'), Gio.DBusCallFlags.NONE, -1, null,
 							Lang.bind(this, function(conn, query){
 								let resp = conn.call_finish(query);
 								resp = resp.get_child_value(0).unpack();
@@ -498,7 +498,7 @@ const MPRISControl = new Lang.Class({
 						log("Laine Exception: "+e);
 					}
 				}));
-			else 
+			else
 				obj.setPAStream(path);
 			return true;
 		}
@@ -619,7 +619,7 @@ const MPRISStream = new Lang.Class({
 				else if(response == 'Paused'){
 					this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
 						GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']), GLib.VariantType.new("(v)"),
-						Gio.DBusCallFlags.NONE, -1, null, 
+						Gio.DBusCallFlags.NONE, -1, null,
 						Lang.bind(this, function(conn, query){
 							let response = conn.call_finish(query).get_child_value(0).unpack();
 							this._mediaPosition = response.get_int64();
@@ -647,10 +647,10 @@ const MPRISStream = new Lang.Class({
 
 		//Signal handlers
 		this._sigPropChange = this._dbus.signal_subscribe(this._path, 'org.freedesktop.DBus.Properties',
-			'PropertiesChanged', '/org/mpris/MediaPlayer2', null, Gio.DBusSignalFlags.NONE, 
+			'PropertiesChanged', '/org/mpris/MediaPlayer2', null, Gio.DBusSignalFlags.NONE,
 			Lang.bind(this, this._onPropChange), null);
 		this._sigSeeked = this._dbus.signal_subscribe(this._path, 'org.mpris.MediaPlayer2.Player',
-			'Seeked', '/org/mpris/MediaPlayer2', null, Gio.DBusSignalFlags.NONE, 
+			'Seeked', '/org/mpris/MediaPlayer2', null, Gio.DBusSignalFlags.NONE,
 			Lang.bind(this, this._onPropChange), null);
 
 		this._posSlider.connect('value-changed', Lang.bind(this, this._onPosSliderChange));
@@ -668,11 +668,11 @@ const MPRISStream = new Lang.Class({
 		this._volSlider.actor.connect('key-press-event', Lang.bind(this, this._onVolSliderKeyPress));
 
 		this._volSlider.actor.connect('notify::hover', Lang.bind(this, function(){
-			this._setFocused(this._volSlider.actor.hover, 'active-top');	
+			this._setFocused(this._volSlider.actor.hover, 'active-top');
 		}));
 		this._posSlider.actor.set_track_hover(true);
 		this._posSlider.actor.connect('notify::hover', Lang.bind(this, function(){
-			this._setFocused(this._posSlider.actor.hover, 'active-bottom');	
+			this._setFocused(this._posSlider.actor.hover, 'active-bottom');
 		}));
 
 		this._volSlider.actor.connect('key-focus-in', Lang.bind(this, function(){ this._setFocused(true, 'active-top'); }));
@@ -685,14 +685,14 @@ const MPRISStream = new Lang.Class({
 		if(activate)
 			this.actor.add_style_pseudo_class(type);
 		else
-			this.actor.remove_style_pseudo_class(type); 
+			this.actor.remove_style_pseudo_class(type);
 	},
 
 		//Async functions
 	_hdlDesktopEntry: function(conn, result){
 		let res = conn.call_finish(result);
 		res = res.get_child_value(0).unpack();
-		
+
 		let dName = res.get_string()[0];
 		let icon;
 		let app = Shell.AppSystem.get_default().lookup_app(dName+".desktop");
@@ -705,7 +705,7 @@ const MPRISStream = new Lang.Class({
 			icon = new St.Icon({icon_name: 'package_multimedia', style_class: 'simple-stream-icon'});
 			this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
 				GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2', 'Identity']), GLib.VariantType.new("(v)"),
-				Gio.DBusCallFlags.NONE, -1, null, 
+				Gio.DBusCallFlags.NONE, -1, null,
 				Lang.bind(this, function(conn, query){
 					let res = conn.call_finish(query).get_child_value(0).get_string()[0];
 					this.label.text = res;
@@ -735,17 +735,17 @@ const MPRISStream = new Lang.Class({
 
 		this._paPath = null;
 
-		this._sigFVol = this._volSlider.connect('value-changed', 
+		this._sigFVol = this._volSlider.connect('value-changed',
 			Lang.bind(this, function(slider, value, property){
 				this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Set",
-					GLib.Variant.new('(ssv)', ['org.mpris.MediaPlayer2.Player', 'Volume', GLib.Variant.new_double(value)]), 
+					GLib.Variant.new('(ssv)', ['org.mpris.MediaPlayer2.Player', 'Volume', GLib.Variant.new_double(value)]),
 					null, Gio.DBusCallFlags.NONE, -1, null, null);
 			})
 		);
 		this._sigFMute = this._muteBtn.connect('clicked', Lang.bind(this, function(){
 				this._muteVal = !this._muteVal;
 				this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Set",
-					GLib.Variant.new('(ssv)', ['org.mpris.MediaPlayer2.Player', 'Volume', GLib.Variant.new_double(this._muteVal?0:this._appVol)]), 
+					GLib.Variant.new('(ssv)', ['org.mpris.MediaPlayer2.Player', 'Volume', GLib.Variant.new_double(this._muteVal?0:this._appVol)]),
 					null, Gio.DBusCallFlags.NONE, -1, null, null);
 			})
 		);
@@ -856,7 +856,7 @@ const MPRISStream = new Lang.Class({
 
 			if(this._mediaLength <= 0)
 				this._timeBox.hide();
-			else 
+			else
 				this._timeBox.show();
 		}
 	},
@@ -918,7 +918,7 @@ const MPRISStream = new Lang.Class({
 								Loop.source_remove(this._sigUpdPos);
 								this._sigUpdPos = 0;
 							}
-							this._playBtn.child.icon_name = 'media-playback-start-symbolic';        
+							this._playBtn.child.icon_name = 'media-playback-start-symbolic';
 						}
 					}
 					else if(key == 'Volume' && this._paPath != null){
@@ -996,8 +996,8 @@ const MPRISStream = new Lang.Class({
 		if(seconds > 0){
 			ans = (seconds % 60) + ':' + ans;
 			seconds = Math.floor(seconds/60);
-		} 
-		else 
+		}
+		else
 			ans = '0:'+ans;
 		if(seconds > 0)
 			ans = seconds +':'+ans;
@@ -1018,7 +1018,7 @@ const MPRISStream = new Lang.Class({
 			if(this._app == null){//try raising a window via dbus
 				this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
 					GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2', 'CanRaise']), GLib.VariantType.new("(v)"),
-					Gio.DBusCallFlags.NONE, -1, null, 
+					Gio.DBusCallFlags.NONE, -1, null,
 					Lang.bind(this, function(conn, query){
 						let response = conn.call_finish(query).get_child_value(0).unpack();
 						if(response.get_boolean()){
@@ -1029,7 +1029,7 @@ const MPRISStream = new Lang.Class({
 					})
 				);
 			}
-			
+
 		}
 		if(this._app != null){
 			this._app.activate();
