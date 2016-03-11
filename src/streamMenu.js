@@ -827,8 +827,24 @@ const MPRISStream = new Lang.Class({
 				this._albumArt.hide();
 			}
 
-			if('mpris:trackid' in metaD)
-				this._mediaID = metaD['mpris:trackid'].get_string()[0];
+			if('mpris:trackid' in metaD || 'xesam:url' in metaD) {
+				if('mpris:trackid' in metaD)
+					this._mediaID = metaD['mpris:trackid'].get_string()[0];
+
+				this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
+					GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']), GLib.VariantType.new("(v)"),
+					Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
+						try{
+							let response = conn.call_finish(query).get_child_value(0).unpack();
+							this._mediaPosition = response.get_int64();
+						}
+						catch(err){
+							if(!err.message.startsWith("GDBus.Error:org.freedesktop.DBus.Error.InvalidArgs: No such property"))
+								throw err;
+						}
+					})
+				);
+			}
 
 			this._mediaLength = 0;
 			if('mpris:length' in metaD){
