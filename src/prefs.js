@@ -13,8 +13,8 @@ const KEY_MERGE_CONTROLS = "merge-controls";
 
 function init(){
 	Convenience.initTranslations();
-	
-	
+
+
 }
 
 const LainePrefsWidget = new GObject.Class({
@@ -48,9 +48,9 @@ const LainePrefsWidget = new GObject.Class({
 		}), 0, 1, 1, 1);
 
 		this._showLabelSwitch = new Gtk.Switch({active: this._settings.get_boolean(KEY_PORT_LABEL)});
-        this._showLabelSwitch.connect('notify::active', Lang.bind(this, function(src){
-			this._settings.set_boolean(KEY_PORT_LABEL, src.active);
-        })); 
+    	this._showLabelSwitch.connect('notify::active', Lang.bind(this, function(src){
+				this._settings.set_boolean(KEY_PORT_LABEL, src.active);
+    }));
 		this.attach(this._showLabelSwitch, 20, 1, 1, 1);
 
 		//-----------------------------------------------------------
