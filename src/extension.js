@@ -175,6 +175,18 @@ const LaineCore = new Lang.Class({
 		return this;
 	},
 
+	/**
+	 * This function is for tracking open child menus and closing an open one if
+	 * a new one opens.
+	 */
+	_setOpenedSubMenu: function(menu){
+		if(this.openChildMenu != null && this.openChildMenu.isOpen){
+			this.openChildMenu.toggle();
+		}
+
+		this.openChildMenu = menu;
+	},
+
 	_onDestroy: function(){
 		if(this._paDBus){
 			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
