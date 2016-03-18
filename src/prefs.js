@@ -13,8 +13,6 @@ const KEY_MERGE_CONTROLS = "merge-controls";
 
 function init(){
 	Convenience.initTranslations();
-
-
 }
 
 const LainePrefsWidget = new GObject.Class({
@@ -25,6 +23,7 @@ const LainePrefsWidget = new GObject.Class({
 	_init:function(params){
 		this.parent(params);
 		this.margin = this.row_spacing = this.column_spacing = 10;
+		this.set_hexpand(true);
 
 		this._settings = Convenience.getSettings();
 		//-----------------------------------------------------------
@@ -59,6 +58,7 @@ const LainePrefsWidget = new GObject.Class({
 		));
 
 
+
 		this._showLabelSwitch = new Gtk.Switch({
 			active: this._settings.get_boolean(KEY_PORT_LABEL)
 		});
@@ -79,40 +79,14 @@ const LainePrefsWidget = new GObject.Class({
 			Gtk.PositionType.RIGHT, 1, 1);
 		this.attach_next_to(this._mergeAggregateSwitch, lbl_mergeAggregate,
 			Gtk.PositionType.RIGHT, 1, 1);
+		volumeOverdrive.set_hexpand(true);
+		volumeOverdrive.add_mark(100, Gtk.PositionType.BOTTOM, null);
 
-
-		//-----------------------------------------------------------
-
-		// this.attach(new Gtk.Label({
-		// 	label: _("Volume overdrive"),
-		// 	halign: Gtk.Align.START
-		// }), 0, 0, 1, 1);
-		//
-		// this.attach(volumeOverdrive, 20, 0, 40, 1);
-
-		//-----------------------------------------------------------
-		// this.attach(new Gtk.Label({
-		// 	label: _("Show active port label"),
-		// 	halign: Gtk.Align.START
-		// }), 0, 1, 1, 1);
-		//
-		// this._showLabelSwitch = new Gtk.Switch({active: this._settings.get_boolean(KEY_PORT_LABEL)});
-    //     this._showLabelSwitch.connect('notify::active', Lang.bind(this, function(src){
-		// 	this._settings.set_boolean(KEY_PORT_LABEL, src.active);
-    //     }));
-		// this.attach(this._showLabelSwitch, 20, 1, 1, 1);
-		//
-		// //-----------------------------------------------------------
-		//
-		// this.attach(new Gtk.Label({
-		// 	label: _("Merge controls into aggregate menu"),
-		// 	halign: Gtk.Align.START
-		// }), 0, 2, 1, 1);
-		// this._mergeAggregateSwitch = new Gtk.Switch({active: this._settings.get_boolean(KEY_MERGE_CONTROLS)});
-		// this._mergeAggregateSwitch.connect('notify::active', Lang.bind(this, function(src){
-		// 	this._settings.set_boolean(KEY_MERGE_CONTROLS, src.active);
-		// }));
-		// this.attach(this._mergeAggregateSwitch, 20, 2, 1, 1);
+		//Just for spacing to expand column three
+		this.attach_next_to(new Gtk.Label({
+			visible:false,
+			hexpand:true
+		}),this._showLabelSwitch, Gtk.PositionType.RIGHT, 1, 1);
 
 	}
 });
