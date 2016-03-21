@@ -21,46 +21,56 @@ const SourceMenu = Me.imports.sourceMenu;
 const Convenience = Me.imports.convenience;
 
 function connectToPADBus(callback){
-	let dbus = Gio.DBus.session;
-
-	dbus.call('org.PulseAudio1', '/org/pulseaudio/server_lookup1', "org.freedesktop.DBus.Properties", "Get",
-		GLib.Variant.new('(ss)', ['org.PulseAudio.ServerLookup1', 'Address']), GLib.VariantType.new("(v)"),
-		Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this, function(conn, query){
-			let resp = conn.call_finish(query);
-			resp = resp.get_child_value(0).unpack();
-			let paAddr = resp.get_string()[0];
-
-			Gio.DBusConnection.new_for_address(paAddr, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT, null, null,
-				Lang.bind(this, function(conn, query){
+	let f_connectToPABus = function(paAddr, callback, moduleLoaded){
+		Gio.DBusConnection.new_for_address(paAddr,
+			Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT, null, null, Lang.bind(this,
+				function(conn, query){
 					try{
 						let paConn = Gio.DBusConnection.new_for_address_finish(query);
-						callback(paConn, false);
+						callback(paConn, moduleLoaded);
 					} catch(e) {
-						log('EXCEPTION:: '+e);
-						//Couldn't connect to PADBus, try manually loading the module and reconnecting
-						let [, pid]  = GLib.spawn_async(null, ['pactl','load-module','module-dbus-protocol'], null,
-							GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.STDOUT_TO_DEV_NULL | GLib.SpawnFlags.STDERR_TO_DEV_NULL | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
-								null, null);
-
-						this._childWatch = GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, status, requestObj) {
-							GLib.source_remove(this._childWatch);
-
-							Gio.DBusConnection.new_for_address(paAddr, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT, null, null,
-								Lang.bind(this, function(conn, query){
-									try{
-										let paConn = Gio.DBusConnection.new_for_address_finish(query);
-										callback(paConn, true);
-									} catch(e) {
-										log('Laine: Cannot connect to pulseaudio over dbus');
-										throw e;
-									}
-								})
-							);
-						}));
+						if(!moduleLoaded){
+							//If the module wasn't loaded, try loading it and reconnecting
+							f_loadModule(Lang.bind(this, function(){
+								f_connectToPABus(paAddr, callback, true);
+							}));
+						} else {
+								log('Laine: Cannot connect to pulseaudio over dbus');
+						}
 					}
-				})
-			);
-		})
+				}
+			));
+	};
+
+	let f_loadModule = function(callback){
+		let [, pid] = GLib.spawn_async(null,
+			['pactl','load-module','module-dbus-protocol'], null,
+			GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.STDOUT_TO_DEV_NULL |
+			GLib.SpawnFlags.STDERR_TO_DEV_NULL | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+			null, null
+		);
+
+		this._childWatch = GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid,
+			Lang.bind(this, function(pid, status, requestObj){
+				GLib.source_remove(this._childWatch);
+				callback();
+			})
+		);
+	};
+
+
+	let dbus = Gio.DBus.session;
+	dbus.call('org.PulseAudio1', '/org/pulseaudio/server_lookup1',
+		"org.freedesktop.DBus.Properties",
+		"Get", GLib.Variant.new('(ss)', ['org.PulseAudio.ServerLookup1', 'Address']),
+		GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this,
+			function(conn, query){
+				let resp = conn.call_finish(query).get_child_value(0).unpack();
+				let paAddr = resp.get_string()[0];
+
+				f_connectToPABus(paAddr, callback, false);
+			}
+		)
 	);
 }
 
@@ -71,8 +81,7 @@ const LaineCore = new Lang.Class({
 	_init: function(container){
 		this.parent();
 		this._icon = new St.Icon({ icon_name: 'system-run-symbolic', style_class: 'system-status-icon' });
-
-		connectToPADBus(Lang.bind(this, function(conn, manual){
+ 		let build_cb = function(conn, manual){
 			this._paDBus = conn;
 			this._moduleLoad = manual;
 
@@ -93,8 +102,14 @@ const LaineCore = new Lang.Class({
 			this.addMenuItem(this._streamMenu);
 
 			container.layout();
-		}));
+		};
 
+		try{
+			connectToPADBus(Lang.bind(this, build_cb));
+		}
+		catch(e){
+			log("EXCEPTION:Laine "+e);
+		}
 	},
 
 	_addPulseAudioListeners: function(){
