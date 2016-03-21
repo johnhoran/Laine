@@ -13,11 +13,6 @@ const KEY_MERGE_CONTROLS = "merge-controls";
 
 function init(){
 	Convenience.initTranslations();
-<<<<<<< HEAD
-
-
-=======
->>>>>>> devel
 }
 
 const LainePrefsWidget = new GObject.Class({
@@ -55,22 +50,13 @@ const LainePrefsWidget = new GObject.Class({
 		//-----------------------------------------------------------
 		//Controls
 
-<<<<<<< HEAD
-		this._showLabelSwitch = new Gtk.Switch({active: this._settings.get_boolean(KEY_PORT_LABEL)});
-    	this._showLabelSwitch.connect('notify::active', Lang.bind(this, function(src){
-				this._settings.set_boolean(KEY_PORT_LABEL, src.active);
-    }));
-		this.attach(this._showLabelSwitch, 20, 1, 1, 1);
-=======
+
 		let volumeOverdrive = Gtk.Scale.new_with_range(
 			Gtk.Orientation.HORIZONTAL, 80, 150, 5);
 		volumeOverdrive.set_value(this._settings.get_int(KEY_PA_OVER));
 		volumeOverdrive.connect('value-changed', Lang.bind(this,
 			function(src){ this._settings.set_int(KEY_PA_OVER, src.get_value()); }
 		));
->>>>>>> devel
-
-
 
 		this._showLabelSwitch = new Gtk.Switch({
 			active: this._settings.get_boolean(KEY_PORT_LABEL)
