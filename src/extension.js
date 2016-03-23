@@ -271,8 +271,23 @@ const Laine = new Lang.Class({
 	_init: function(){
 		this.parent(0.0, "", false);
 
+		this._settings = Convenience.getSettings();
+		this._key_MERGE_CONTROLS = Me.imports.prefs.KEY_MERGE_CONTROLS;
+
+		this._sigShowLbl = this._settings.connect(
+			'changed::'+this._key_MERGE_CONTROLS,
+			Lang.bind(this, this._mergeControls));
+
 		this.laineCore = new LaineCore(this);
 		return 0;
+	},
+
+	_mergeControls: function(){
+		let merge = this._settings.get_boolean(this._key_MERGE_CONTROLS);
+
+
+
+		log("here");
 	},
 
 	layout: function(){
