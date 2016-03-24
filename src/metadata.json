@@ -1,4 +1,4 @@
-{	
+{
 	"name": "Laine",
 	"description": "Volume control extension. Firstly it allows the control of the overall output volume, as well as the volume of each application, and the input volume of microphones when a input application is active. It also allows the selection of input and output devices (kinda requires pulseaudio 6 due to a bug in previous versions), if more than one is available. \n\nIt has support for MPRIS, so if an mpris source is active it will show some basic information about what is playing, and some basic controls.\n\nThe icon for each stream doubles as a mute/unmute button, and if you click on the label it will attempt to make the source application active (doesn't work in every situation). \n\nThis is my first attempt at a gnome extension. So it is probably buggy, and definitely hacky, so please leave any bug reports on the github and I'll do my best to get to them.",
 	"shell-version": [ "3.14", "3.16", "3.18", "3.20" ],
