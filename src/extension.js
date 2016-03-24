@@ -307,6 +307,15 @@ const Laine = new Lang.Class({
 	}
 });
 
+const Laine = new Lang.Class({
+	Name: 'Laine',
+
+	_init: function(){
+		this._settings = Conveni
+	}
+});
+
+
 let _menuButton;
 
 function init(){
