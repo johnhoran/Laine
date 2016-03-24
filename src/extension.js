@@ -35,7 +35,7 @@ function connectToPADBus(callback){
 								f_connectToPABus(paAddr, callback, true);
 							}));
 						} else {
-								log('Laine: Cannot connect to pulseaudio over dbus');
+							log('Laine: Cannot connect to pulseaudio over dbus');
 						}
 					}
 				}
@@ -261,8 +261,6 @@ const LaineCore = new Lang.Class({
 		}
 	}
 });
-
-
 
 const Laine = new Lang.Class({
 	Name: 'Laine',
