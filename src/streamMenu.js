@@ -815,14 +815,20 @@ const MPRISStream = new Lang.Class({
 			if('mpris:artUrl' in metaD){
 				let filePath = metaD['mpris:artUrl'].get_string()[0];
 				filePath = decodeURI(filePath);
-				let iconPath = filePath.substring(7, filePath.length);
 
-				if(GLib.file_test(iconPath, GLib.FileTest.EXISTS)){
-					let file = Gio.File.new_for_path(iconPath)
-					let icon = new Gio.FileIcon({file:file});
-					this._albumArt.gicon = icon;
+				if(filePath.match(/http/)){
+					let file = Gio.file_new_for_uri(filePath);
+					file.read_async(null, null, Lang.bind(this, this._setIcon));
 				}
-				this._albumArt.show();
+				else if(filePath.match(/file/)) {
+					let iconPath = filePath.substring(7, filePath.length);
+					if(GLib.file_test(iconPath, GLib.FileTest.EXISTS)){
+						let file = Gio.File.new_for_path(iconPath);
+						this._setIcon(file, null);
+					}
+				}
+				else
+					this._albumArt.hide();
 			} else {
 				this._albumArt.hide();
 			}
@@ -1053,6 +1059,26 @@ const MPRISStream = new Lang.Class({
 		}
 	},
 
+	_setIcon: function(file, result){
+		if(result != null){
+			if(this._tmpIcon) this._tmpIcon.delete(null);
+			this._tmpIcon = Gio.file_new_tmp("laine.XXXXXX")[0];
+
+			let inStr = file.read_finish(result);
+			let outStr = this._tmpIcon.replace(null, false,
+				Gio.FileCreateFlags.REPLACE_DESTINATION, null, null);
+			outStr.splice(inStr,
+				Gio.OutputStreamSpliceFlags.CLOSE_SOURCE |
+				Gio.OutputStreamSpliceFlags.CLOSE_TARGET, null);
+			file = this._tmpIcon;
+		}
+
+		let icon = new Gio.FileIcon({file:file});
+		this._albumArt.set_gicon(icon);
+
+		this._albumArt.show();
+	},
+
 	_onDestroy: function(){
 		this._dbus.signal_unsubscribe(this._sigPropChange);
 		this._dbus.signal_unsubscribe(this._sigSeeked);
@@ -1064,5 +1090,8 @@ const MPRISStream = new Lang.Class({
 			Loop.source_remove(this._sigUpdPos);
 			this._sigUpdPos = 0;
 		}
+
+		if(this._tmpIcon)
+			this._tmpIcon.delete(null);
 	}
 });
