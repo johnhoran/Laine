@@ -262,6 +262,7 @@ const LaineCore = new Lang.Class({
 	}
 });
 
+/*
 const Laine = new Lang.Class({
 	Name: 'Laine',
 	Extends: PanelMenu.Button,
@@ -305,14 +306,63 @@ const Laine = new Lang.Class({
 		Main.panel.statusArea.aggregateMenu._volume._volumeMenu.actor.hide();
 		Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.hide();
 	}
-});
+});*/
 
 const Laine = new Lang.Class({
 	Name: 'Laine',
 
 	_init: function(){
-		this._settings = Conveni
+		this._settings = Convenience.getSettings();
+		this._key_MERGE_CONTROLS = Me.imports.prefs.KEY_MERGE_CONTROLS;
+
+		this.laineCore = new LaineCore(this);
+		return 0;
+	},
+
+	layout: function(){
+		let merge = this._settings.get_boolean(this._key_MERGE_CONTROLS);
+
+		let stat = false;
+		if(merge)
+			stat = this._aggregateLayout();
+		else
+			stat = this._menuButtonLayout();
+
+		if(stat){
+			Main.panel.statusArea.aggregateMenu._volume._volumeMenu.actor.hide();
+			Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.hide();
+		}
+	},
+
+	_menuButtonLayout: function(){
+		let hbox = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
+		hbox.add_child(this.laineCore._icon);
+		this.button = new PanelMenu.Button(0.0, "", false);
+		this.button.actor.add_child(hbox);
+		this.button.menu.addMenuItem(this.laineCore);
+
+		this.button.actor.connect('destroy',
+			Lang.bind(this.laineCore, this.laineCore._onDestroy)
+		);
+		this.button.actor.connect('scroll-event',
+			Lang.bind(this.laineCore._sinkMenu, this.laineCore._sinkMenu.scroll)
+		);
+
+		if(Main.panel.statusArea.laine != 'undefined')
+			delete Main.panel.statusArea.laine;
+		Main.panel.addToStatusArea('laine', this.button);
+
+		return true;
+	},
+
+	_aggregateLayout: function(){
+
+	},
+
+	destroy: function(){
+		this.button.destroy();
 	}
+
 });
 
 
