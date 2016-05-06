@@ -36,6 +36,7 @@ function connectToPADBus(callback){
 							}));
 						} else {
 							log('Laine: Cannot connect to pulseaudio over dbus');
+							log(e);
 						}
 					}
 				}
@@ -203,6 +204,7 @@ const LaineCore = new Lang.Class({
 	},
 
 	_onDestroy: function(){
+
 		if(this._paDBus){
 			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
 				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.NewPlaybackStream']),
@@ -356,11 +358,30 @@ const Laine = new Lang.Class({
 	},
 
 	_aggregateLayout: function(){
+		Main.panel.statusArea.aggregateMenu.menu.addMenuItem(this.laineCore, 0);
+		Main.panel.statusArea.aggregateMenu._indicators.insert_child_below(
+			this.laineCore._icon,
+			Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.get_parent()
+		);
+		Main.panel.statusArea.aggregateMenu._laine = this.laineCore;
 
+		this._sigScroll = Main.panel.statusArea.aggregateMenu.actor.connect(
+			'scroll-event',
+			Lang.bind(this.laineCore._sinkMenu, this.laineCore._sinkMenu.scroll)
+		);
+
+		return true;
 	},
 
 	destroy: function(){
-		this.button.destroy();
+		if(this.button)
+			this.button.destroy();
+		if(Main.panel.statusArea.aggregateMenu._laine){
+			this.laineCore._icon.destroy();
+			this.laineCore.destroy();
+			Main.panel.statusArea.aggregateMenu.actor.disconnect(this._sigScroll);
+			delete Main.panel.statusArea.aggregateMenu._laine;
+		}
 	}
 
 });
