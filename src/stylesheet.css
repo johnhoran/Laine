@@ -9,6 +9,11 @@
 	padding-right:1.5em;
 	padding-left:1.5em;
 }
+.solitary .port-icon{
+	padding-left:0.5em;
+	padding-right:0.5em;
+}
+
 
 .solitary {
 	width:22em;
@@ -39,6 +44,11 @@
 
 	padding-left: 1.5em;
 }
+.solitary .stream {
+	padding-left:0.7em;
+	padding-top:0.5em;
+}
+
 
 .simple-stream{
 	padding-right:1.5em;

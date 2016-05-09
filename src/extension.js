@@ -265,53 +265,8 @@ const LaineCore = new Lang.Class({
 	}
 });
 
-/*
-const Laine = new Lang.Class({
-	Name: 'Laine',
-	Extends: PanelMenu.Button,
 
-	_init: function(){
-		this.parent(0.0, "", false);
-
-		this._settings = Convenience.getSettings();
-		this._key_MERGE_CONTROLS = Me.imports.prefs.KEY_MERGE_CONTROLS;
-
-		this._sigShowLbl = this._settings.connect(
-			'changed::'+this._key_MERGE_CONTROLS,
-			Lang.bind(this, this._mergeControls));
-
-		this.laineCore = new LaineCore(this);
-		return 0;
-	},
-
-	_mergeControls: function(){
-		let merge = this._settings.get_boolean(this._key_MERGE_CONTROLS);
-
-
-
-		log("here");
-	},
-
-	layout: function(){
-		let hbox = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
-		hbox.add_child(this.laineCore._icon);
-
-		this.actor.add_child(hbox);
-		this.menu.addMenuItem(this.laineCore);
-
-		this.actor.connect('destroy', Lang.bind(this.laineCore, this.laineCore._onDestroy));
-		this.actor.connect('scroll-event', Lang.bind(this.laineCore._sinkMenu, this.laineCore._sinkMenu.scroll));
-
-		//Everything good up to this point, lets replace the built in sound indicator
-		if(Main.panel.statusArea.laine != 'undefined')
-			delete Main.panel.statusArea.laine;
-		Main.panel.addToStatusArea('laine', this);
-		Main.panel.statusArea.aggregateMenu._volume._volumeMenu.actor.hide();
-		Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.hide();
-	}
-});*/
-
-const Laine = new Lang.Class({
+const LaineShell = new Lang.Class({
 	Name: 'Laine',
 
 	_init: function(){
@@ -396,7 +351,7 @@ function init(){
 }
 
 function enable(){
-	_menuButton = new Laine();
+	_menuButton = new LaineShell();
 }
 
 function disable(){
