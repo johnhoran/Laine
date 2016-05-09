@@ -78,6 +78,7 @@ function connectToPADBus(callback){
 const LaineCore = new Lang.Class({
 	Name: 'LaineCore',
 	Extends: PopupMenu.PopupMenuSection,
+	style_class: 'laine',
 
 	_init: function(container){
 		this.parent();
@@ -85,6 +86,7 @@ const LaineCore = new Lang.Class({
  		let build_cb = function(conn, manual){
 			this._paDBus = conn;
 			this._moduleLoad = manual;
+
 
 			this._sinkMenu = new SinkMenu.SinkMenu(this, this._paDBus);
 			this._sourceMenu = new SourceMenu.SourceMenu(this, this._paDBus);
@@ -99,7 +101,6 @@ const LaineCore = new Lang.Class({
 
 			this.addMenuItem(this._sinkMenu);
 			this.addMenuItem(this._sourceMenu);
-			this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 			this.addMenuItem(this._streamMenu);
 
 			container.layout();
@@ -342,6 +343,7 @@ const Laine = new Lang.Class({
 		this.button = new PanelMenu.Button(0.0, "", false);
 		this.button.actor.add_child(hbox);
 		this.button.menu.addMenuItem(this.laineCore);
+		this.button.menu.actor.add_style_class_name('solitary');
 
 		this.button.actor.connect('destroy',
 			Lang.bind(this.laineCore, this.laineCore._onDestroy)
