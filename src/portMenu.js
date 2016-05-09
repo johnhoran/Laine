@@ -36,7 +36,7 @@ const PortMenu = new Lang.Class({
 		this._paDBus = paconn;
 		this._devices = {};
 
-		this._icon = new St.Icon({style_class: 'sink-icon'});
+		this._icon = new St.Icon({style_class: 'port-icon'});
 		this._nameLbl = new St.Label({text:"test"});
 		let muteBtn = new St.Button({child: this._icon});
 		this._slider = new Slider.Slider(0);
@@ -72,7 +72,7 @@ const PortMenu = new Lang.Class({
 		//this.actor.add(this._slider.actor, {expand:true});
 		this.actor.add(this._expandBtn);
 
-		this.actor.add_style_class_name('stream');
+		this.actor.add_style_class_name('port');
 
 		//Add listeners
 		this._slider.connect('value-changed', Lang.bind(this, function(slider, value, property){

@@ -35,3 +35,11 @@ zip: all
 install: all
 	mkdir -p ~/.local/share/gnome-shell/extensions/$(UUID)
 	cp -R bin/* ~/.local/share/gnome-shell/extensions/$(UUID)
+
+#really useful to be able to reload the theme or gnome shell from the cli
+reload_theme:
+	gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval 'Main.reloadThemeResource(); Main.loadTheme();'
+
+#not sure what happens if called from wayland though...
+restart:
+	gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval 'Meta.restart(_("Restarting"));'

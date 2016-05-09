@@ -35,7 +35,8 @@ function connectToPADBus(callback){
 								f_connectToPABus(paAddr, callback, true);
 							}));
 						} else {
-								log('Laine: Cannot connect to pulseaudio over dbus');
+							log('Laine: Cannot connect to pulseaudio over dbus');
+							log(e);
 						}
 					}
 				}
@@ -77,6 +78,7 @@ function connectToPADBus(callback){
 const LaineCore = new Lang.Class({
 	Name: 'LaineCore',
 	Extends: PopupMenu.PopupMenuSection,
+	style_class: 'laine',
 
 	_init: function(container){
 		this.parent();
@@ -84,6 +86,7 @@ const LaineCore = new Lang.Class({
  		let build_cb = function(conn, manual){
 			this._paDBus = conn;
 			this._moduleLoad = manual;
+
 
 			this._sinkMenu = new SinkMenu.SinkMenu(this, this._paDBus);
 			this._sourceMenu = new SourceMenu.SourceMenu(this, this._paDBus);
@@ -98,7 +101,6 @@ const LaineCore = new Lang.Class({
 
 			this.addMenuItem(this._sinkMenu);
 			this.addMenuItem(this._sourceMenu);
-			this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 			this.addMenuItem(this._streamMenu);
 
 			container.layout();
@@ -203,6 +205,7 @@ const LaineCore = new Lang.Class({
 	},
 
 	_onDestroy: function(){
+
 		if(this._paDBus){
 			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
 				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.NewPlaybackStream']),
@@ -262,8 +265,7 @@ const LaineCore = new Lang.Class({
 	}
 });
 
-
-
+/*
 const Laine = new Lang.Class({
 	Name: 'Laine',
 	Extends: PanelMenu.Button,
@@ -271,8 +273,23 @@ const Laine = new Lang.Class({
 	_init: function(){
 		this.parent(0.0, "", false);
 
+		this._settings = Convenience.getSettings();
+		this._key_MERGE_CONTROLS = Me.imports.prefs.KEY_MERGE_CONTROLS;
+
+		this._sigShowLbl = this._settings.connect(
+			'changed::'+this._key_MERGE_CONTROLS,
+			Lang.bind(this, this._mergeControls));
+
 		this.laineCore = new LaineCore(this);
 		return 0;
+	},
+
+	_mergeControls: function(){
+		let merge = this._settings.get_boolean(this._key_MERGE_CONTROLS);
+
+
+
+		log("here");
 	},
 
 	layout: function(){
@@ -292,7 +309,85 @@ const Laine = new Lang.Class({
 		Main.panel.statusArea.aggregateMenu._volume._volumeMenu.actor.hide();
 		Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.hide();
 	}
+});*/
+
+const Laine = new Lang.Class({
+	Name: 'Laine',
+
+	_init: function(){
+		this._settings = Convenience.getSettings();
+		this._key_MERGE_CONTROLS = Me.imports.prefs.KEY_MERGE_CONTROLS;
+
+		this.laineCore = new LaineCore(this);
+		return 0;
+	},
+
+	layout: function(){
+		let merge = this._settings.get_boolean(this._key_MERGE_CONTROLS);
+
+		let stat = false;
+		if(merge)
+			stat = this._aggregateLayout();
+		else
+			stat = this._menuButtonLayout();
+
+		if(stat){
+			Main.panel.statusArea.aggregateMenu._volume._volumeMenu.actor.hide();
+			Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.hide();
+		}
+	},
+
+	_menuButtonLayout: function(){
+		let hbox = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
+		hbox.add_child(this.laineCore._icon);
+		this.button = new PanelMenu.Button(0.0, "", false);
+		this.button.actor.add_child(hbox);
+		this.button.menu.addMenuItem(this.laineCore);
+		this.button.menu.actor.add_style_class_name('solitary');
+
+		this.button.actor.connect('destroy',
+			Lang.bind(this.laineCore, this.laineCore._onDestroy)
+		);
+		this.button.actor.connect('scroll-event',
+			Lang.bind(this.laineCore._sinkMenu, this.laineCore._sinkMenu.scroll)
+		);
+
+		if(Main.panel.statusArea.laine != 'undefined')
+			delete Main.panel.statusArea.laine;
+		Main.panel.addToStatusArea('laine', this.button);
+
+		return true;
+	},
+
+	_aggregateLayout: function(){
+		Main.panel.statusArea.aggregateMenu.menu.addMenuItem(this.laineCore, 0);
+		Main.panel.statusArea.aggregateMenu._indicators.insert_child_below(
+			this.laineCore._icon,
+			Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.get_parent()
+		);
+		Main.panel.statusArea.aggregateMenu._laine = this.laineCore;
+
+		this._sigScroll = Main.panel.statusArea.aggregateMenu.actor.connect(
+			'scroll-event',
+			Lang.bind(this.laineCore._sinkMenu, this.laineCore._sinkMenu.scroll)
+		);
+
+		return true;
+	},
+
+	destroy: function(){
+		if(this.button)
+			this.button.destroy();
+		if(Main.panel.statusArea.aggregateMenu._laine){
+			this.laineCore._icon.destroy();
+			this.laineCore.destroy();
+			Main.panel.statusArea.aggregateMenu.actor.disconnect(this._sigScroll);
+			delete Main.panel.statusArea.aggregateMenu._laine;
+		}
+	}
+
 });
+
 
 let _menuButton;
 
