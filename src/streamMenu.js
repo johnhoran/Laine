@@ -33,6 +33,7 @@ const StreamMenu = new Lang.Class({
 
 	_init: function(parent, paconn){
 		this.parent();
+		this.actor.add_style_class_name('stream_container');
 		this._paDBus = paconn;
 		this._parent = parent;
 
@@ -144,6 +145,7 @@ const StreamMenu = new Lang.Class({
 	_onAddStream: function(conn, sender, object, iface, signal, param, user_data){
 		let streamPath = param.get_child_value(0).unpack();
 		this._addPAStream(streamPath);
+		this.actor.remove_style_pseudo_class('empty');
 	},
 
 	_onRemoveStream: function(conn, sender, object, iface, signal, param, user_data){
@@ -158,7 +160,12 @@ const StreamMenu = new Lang.Class({
 		else if(streamPath in this._delegatedStreams){
 			this._mprisControl.removePAStream(streamPath);
 			delete this._delegatedStreams[streamPath];
+			this.actor.queue_relayout();
 		}
+
+		if(Object.keys(this._streams).length == 0 &&
+			Object.keys(this._delegatedStreams).length == 0)
+			this.actor.add_style_pseudo_class('empty');
 	},
 
 	_onDestroy: function(){
@@ -353,7 +360,7 @@ const SimpleStream = new Lang.Class({
 			let info = this._app.get_app_info();
 			if(info != null){
 				name = info.get_name();
-				icon = new St.Icon({style_class: 'simple-stream-icon'});
+				icon = new St.Icon({style_class: 'icon'});
 				icon.set_gicon(info.get_icon());
 			}
 		}
@@ -699,7 +706,7 @@ const MPRISStream = new Lang.Class({
 		if(app != null){
 			let info = app.get_app_info();
 			this._label.text = info.get_name();
-			icon = new St.Icon({style_class: 'simple-stream-icon'});
+			icon = new St.Icon({style_class: 'icon'});
 			icon.set_gicon(info.get_icon());
 		} else {
 			icon = new St.Icon({icon_name: 'package_multimedia', style_class: 'simple-stream-icon'});

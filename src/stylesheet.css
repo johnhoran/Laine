@@ -1,56 +1,79 @@
-.simple-stream-icon {
-	icon-size:30px;
+.port {
+	padding-left:16px;
+	padding-right:2px;
+	spacing:2px;
 }
 
-.simple-stream-slider {
+.port-icon {
+	icon-size:1.09em;
+	padding-right:13px;
+	padding-left:13px;
+}
+.solitary .port-icon{
+	padding-left:7px;
+	padding-right:7px;
 }
 
-.simple-stream-container {
-	spacing:5px;
+
+.solitary {
+	width:230px;
 }
 
-.simple-stream-label {
-	text-align: left;
+.stream_container {
+	margin-bottom:10px;
+	spacing:2px;
 }
 
-.stream{
-	spacing:8px;
-	padding-left: 20px;
-	padding-right: 20px;
-	padding-bottom: 10px;
-	padding-top: 10px;
-	width:20em;
+.solitary .stream_container,
+.stream_container:empty{
+	margin-bottom:0px;
 }
 
-.stream:alone{
-	padding-right: 0.1em;
+.solitary .stream_container{
+	padding-top:10px;
 }
 
+.stream_container .icon {
+	icon-size:22px;
+	padding-left:6px;
+	padding-right:12px;
+}
+
+.stream {
+	padding-top:2px;
+	padding-bottom:2px;
+
+	padding-left: 18px;
+}
+.solitary .stream {
+	padding-left:10px;
+	padding-top:4px;
+}
+
+
+.simple-stream{
+	height:32px;
+	padding-right:20px;
+}
 
 .stream:active, .simple-stream:active {
-	background-color:#4c4c4c;
+	background-color: #4a5050;
 }
 
-.sink-icon {
-	icon-size:18px;
-	clear:left;
+.mpris-stream .stream {
+	padding-right:15px;
 }
 
-
-.mpris-stream:active-top{
-	background-gradient-start: rgba(76,76,76,1);
-	background-gradient-end: rgba(76,76,76,0);
-	background-gradient-direction: vertical;
+.mpris-stream .stream:alone {
+	padding-right:0px;
 }
 
-.mpris-stream:active{
-	background:rgb(76,76,76);
+.mpris-stream{
+	padding-right:2px;
 }
 
-.mpris-stream:active-bottom{
-	background-gradient-start: rgba(76,76,76,0);
-	background-gradient-end: rgba(76,76,76,1);
-	background-gradient-direction: vertical;
+.mpris-album-art {
+	icon-size:86px;
 }
 
 .mpris-label-subtext {
@@ -65,58 +88,20 @@
 
 .mpris-meta-info {
 	font-weight: bolder;
-
-}
-
-.mpris-album-art {
-	icon-size:8em;
-}
-
-.mpris-metadata-display {
-	spacing: 0.5em;
-	/*
-	padding-left: 0.3em;
-	padding-right:0.3em;
-	*/
-	padding-left: 20px;
-	padding-right: 20px;
-	padding-bottom: 0em;
-	padding-top: 0.1em;
-}
-
-.mpris-time-display {
-	spacing:0.1em;
-	padding-left: 20px;
-	padding-right: 20px;
-	padding-bottom: 10px;
-	padding-top: 0.1em;
-}
-
-.mpris-metadata-display:alone {
-	padding-top:0.8em;
-	padding-left:0.3em;
-}
-
-.mpris-info-and-controls {
-	width:14em;
-}
-
-.mpris-metadata-display:alone .mpris-info-and-controls {
-	width:2em;
 }
 
 .mpris-player-controls {
-	padding-left:0.5em;
+	padding-left:3px;
 }
 
 .mpris-player-controls > StButton{
 	color: #e6e6e6;
 }
 
-.mpris-player-controls > StButton:hover, 
+.mpris-player-controls > StButton:hover,
 .mpris-player-controls > StButton:focus {
 	color: white;
-	background-color: #4c4c4c;
+	background-color: #4a5050;
 }
 
 .mpris-player-controls > StButton:disabled {
@@ -132,49 +117,67 @@
 .mpris-fullscreen-button > StIcon,
 .mpris-play-order-controls > StButton > StIcon,
 .mpris-player-controls > StButton > StIcon{
-	icon-size:1.2em;
+	icon-size:12px;
 }
 
 .mpris-play-button {
-	border: 2px solid #5f5f5f;
-	padding: 0.5em, 1em;
+	border: 1px solid #5f5f5f;
+	padding: 1px, 10px;
 }
 
 .mpris-play-button:alone {
-	border-radius: 0.5em;
-	padding: 0.2em;
+	border-radius: 5px;
+	padding: 2px;
 }
 
 .mpris-previous-button {
-	border-radius: 0.5em 0em 0em 0.5em;
-	border: 2px solid #5f5f5f;
+	border-radius: 5px 0px 0px 5px;
+	border: 1px solid #5f5f5f;
 	border-right: 0px;
-	padding:0.5em;
+	padding:5px;
 }
 
 .mpris-next-button {
-	border-radius: 0em 0.5em 0.5em 0em;
-	border: 2px solid #5f5f5f;
+	border-radius: 0px 5px 5px 0px;
+	border: 1px solid #5f5f5f;
 	border-left: 0px;
-	padding:0.5em;
+	padding:5px;
 }
 
-.mpris-fullscreen-button {
-	border-radius: 0.5em;
-	border: 2px solid #5f5f5f;
-	padding: 0.5em;
+.mpris-stream:active-top{
+	background-gradient-start: rgba(74,80,80,1);
+	background-gradient-end: rgba(74,80,80,0);
+	background-gradient-direction: vertical;
 }
 
-.mpris-shuffle-button {
-	border-radius: 0.5em 0em 0em 0.5em;
-	border: 2px solid #5f5f5f;
-	border-right: 1px;
-	padding:0.5em;
+.mpris-stream:active{
+	background:rgb(74,80,80);
 }
 
-.mpris-repeat-button {
-	border-radius: 0em 0.5em 0.5em 0em;
-	border: 2px solid #5f5f5f;
-	border-left: 1px;
-	padding:0.5em;
+.mpris-stream:active-bottom{
+	background-gradient-start: rgba(74,80,80,0);
+	background-gradient-end: rgba(74,80,80,1);
+	background-gradient-direction: vertical;
 }
+
+.mpris-metadata-display {
+	spacing: 7px;
+	padding-left: 15px;
+	padding-right: 15px;
+	padding-bottom: 0px;
+	padding-top: 1px;
+}
+
+.mpris-time-display {
+	padding-left:15px;
+	padding-right:15px;
+	padding-top:1px;
+	spacing:3px;
+}
+
+.mpris-metadata-display:alone {
+	padding-top:10px;
+	padding-left:5px;
+}
+
+
