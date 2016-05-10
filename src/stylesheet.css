@@ -76,6 +76,13 @@
 	icon-size:86px;
 }
 
+.mpris-album-art:generic {
+	icon-size:30px;
+	border:1px gray solid;
+	padding:27px;
+	color: lightgray;
+}
+
 .mpris-label-subtext {
 	font-weight: lighter;
 	font-size: 70%;
