@@ -1,78 +1,79 @@
 .port {
-	padding-left:1.2em;
-	padding-right:0.2em;
-	spacing:0.01em;
+	padding-left:16px;
+	padding-right:2px;
+	spacing:2px;
 }
 
 .port-icon {
 	icon-size:1.09em;
-	padding-right:1.5em;
-	padding-left:1.5em;
+	padding-right:13px;
+	padding-left:13px;
 }
 .solitary .port-icon{
-	padding-left:0.5em;
-	padding-right:0.5em;
+	padding-left:7px;
+	padding-right:7px;
 }
 
 
 .solitary {
-	width:22em;
+	width:230px;
 }
 
 .stream_container {
-	padding-bottom:1em;
+	margin-bottom:10px;
+	spacing:2px;
 }
 
 .solitary .stream_container,
 .stream_container:empty{
-	padding-bottom:0em;
+	margin-bottom:0px;
 }
 
 .solitary .stream_container{
-	padding-top:1em;
+	padding-top:10px;
 }
 
 .stream_container .icon {
-	icon-size:2.5em;
-	padding-left:0.5em;
-	padding-right:0.5em;
+	icon-size:22px;
+	padding-left:6px;
+	padding-right:12px;
 }
 
 .stream {
-	padding-top:0.2em;
-	padding-bottom:0.2em;
+	padding-top:2px;
+	padding-bottom:2px;
 
-	padding-left: 1.5em;
+	padding-left: 18px;
 }
 .solitary .stream {
-	padding-left:0.7em;
-	padding-top:0.5em;
+	padding-left:10px;
+	padding-top:4px;
 }
 
 
 .simple-stream{
-	padding-right:1.5em;
+	height:32px;
+	padding-right:20px;
 }
 
 .stream:active, .simple-stream:active {
 	background-color: #4a5050;
-	/*background-color:#4c4c4c;*/
 }
 
 .mpris-stream .stream {
-	padding-right:1.5em;
+	padding-right:15px;
 }
 
 .mpris-stream .stream:alone {
-	padding-right:0em;
+	padding-right:0px;
 }
 
 .mpris-stream{
-	padding-right:0.1em;
+	padding-right:2px;
 }
 
 .mpris-album-art {
-	icon-size:8em;
+	icon-size:86px;
 }
 
 .mpris-label-subtext {
@@ -90,7 +91,7 @@
 }
 
 .mpris-player-controls {
-	padding-left:0.5em;
+	padding-left:3px;
 }
 
 .mpris-player-controls > StButton{
@@ -116,51 +117,31 @@
 .mpris-fullscreen-button > StIcon,
 .mpris-play-order-controls > StButton > StIcon,
 .mpris-player-controls > StButton > StIcon{
-	icon-size:1.2em;
+	icon-size:12px;
 }
 
 .mpris-play-button {
-	border: 0.1em solid #5f5f5f;
-	padding: 0.5em, 1em;
+	border: 1px solid #5f5f5f;
+	padding: 1px, 10px;
 }
 
 .mpris-play-button:alone {
-	border-radius: 0.5em;
-	padding: 0.2em;
+	border-radius: 5px;
+	padding: 2px;
 }
 
 .mpris-previous-button {
-	border-radius: 0.5em 0em 0em 0.5em;
-	border: 0.1em solid #5f5f5f;
+	border-radius: 5px 0px 0px 5px;
+	border: 1px solid #5f5f5f;
 	border-right: 0px;
-	padding:0.5em;
+	padding:5px;
 }
 
 .mpris-next-button {
-	border-radius: 0em 0.5em 0.5em 0em;
-	border: 0.1em solid #5f5f5f;
+	border-radius: 0px 5px 5px 0px;
+	border: 1px solid #5f5f5f;
 	border-left: 0px;
-	padding:0.5em;
-}
-
-.mpris-fullscreen-button {
-	border-radius: 0.5em;
-	border: 0.1em solid #5f5f5f;
-	padding: 0.5em;
-}
-
-.mpris-shuffle-button {
-	border-radius: 0.5em 0em 0em 0.5em;
-	border: 0.1em solid #5f5f5f;
-	border-right: 1px;
-	padding:0.5em;
-}
-
-.mpris-repeat-button {
-	border-radius: 0em 0.5em 0.5em 0em;
-	border: 0.1em solid #5f5f5f;
-	border-left: 1px;
-	padding:0.5em;
+	padding:5px;
 }
 
 .mpris-stream:active-top{
@@ -180,23 +161,23 @@
 }
 
 .mpris-metadata-display {
-	spacing: 0.5em;
-	padding-left: 1em;
-	padding-right: 1em;
-	padding-bottom: 0em;
-	padding-top: 0.1em;
+	spacing: 7px;
+	padding-left: 15px;
+	padding-right: 15px;
+	padding-bottom: 0px;
+	padding-top: 1px;
 }
 
 .mpris-time-display {
-	padding-left:1em;
-	padding-right:1em;
-	padding-top:0.1em;
-	spacing:0.3em;
+	padding-left:15px;
+	padding-right:15px;
+	padding-top:1px;
+	spacing:3px;
 }
 
 .mpris-metadata-display:alone {
-	padding-top:0.8em;
-	padding-left:0.3em;
+	padding-top:10px;
+	padding-left:5px;
 }
 
 
