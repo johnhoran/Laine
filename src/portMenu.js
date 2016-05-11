@@ -207,8 +207,10 @@ const PortMenu = new Lang.Class({
 		this._paDBus.signal_unsubscribe(this._sigFall);
 		this._paDBus.signal_unsubscribe(this._sigSkA);
 		this._paDBus.signal_unsubscribe(this._sigSkR);
-
-		this._settings.disconnect(this._sigShowLbl);
+		if(this._sigShowLbl){
+			this._settings.disconnect(this._sigShowLbl);
+			delete this._sigShowLbl;
+		}
 	}
 	
 });
