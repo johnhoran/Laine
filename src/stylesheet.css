@@ -16,7 +16,7 @@
 
 
 .solitary {
-	width:230px;
+	width:20em;
 }
 
 .stream_container {
@@ -34,7 +34,7 @@
 }
 
 .stream_container .icon {
-	icon-size:22px;
+	icon-size:1.8em;
 	padding-left:6px;
 	padding-right:12px;
 }
@@ -52,7 +52,6 @@
 
 
 .simple-stream{
-	height:32px;
 	padding-right:20px;
 }
 
@@ -76,22 +75,32 @@
 	icon-size:86px;
 }
 
+.mpris-album-art:generic {
+	width:84px;
+	height:84px;
+	icon-size:1.8em;
+	border:1px gray solid;
+	color: lightgray;
+}
+
 .mpris-label-subtext {
 	font-weight: lighter;
-	font-size: 70%;
+	font-size: 0.65em;
 	color: lightgray;
 }
 .mpris-meta-title {
 	font-weight: bolder;
-	font-size: 110%;
+	font-size: 0.9em;
 }
 
 .mpris-meta-info {
 	font-weight: bolder;
+	font-size:0.8em;
 }
 
 .mpris-player-controls {
 	padding-left:3px;
+	padding-top:10px;
 }
 
 .mpris-player-controls > StButton{

@@ -818,26 +818,34 @@ const MPRISStream = new Lang.Class({
 			} else {
 				this._albumBox.hide();
 			}
+			try{
+				if('mpris:artUrl' in metaD){
+					let filePath = metaD['mpris:artUrl'].get_string()[0];
+					filePath = decodeURI(filePath);
 
-			if('mpris:artUrl' in metaD){
-				let filePath = metaD['mpris:artUrl'].get_string()[0];
-				filePath = decodeURI(filePath);
-
-				if(filePath.match(/http/)){
-					let file = Gio.file_new_for_uri(filePath);
-					file.read_async(null, null, Lang.bind(this, this._setIcon));
-				}
-				else if(filePath.match(/file/)) {
-					let iconPath = filePath.substring(7, filePath.length);
-					if(GLib.file_test(iconPath, GLib.FileTest.EXISTS)){
-						let file = Gio.File.new_for_path(iconPath);
-						this._setIcon(file, null);
+					if(filePath.match(/http/)){
+						let file = Gio.file_new_for_uri(filePath);
+						file.read_async(null, null, Lang.bind(this, this._setIcon));
 					}
+					else if(filePath.match(/file/)) {
+						let iconPath = filePath.substring(7, filePath.length);
+						if(GLib.file_test(iconPath, GLib.FileTest.EXISTS)){
+							let file = Gio.File.new_for_path(iconPath);
+							this._setIcon(file, null);
+						}
+					}
+					else throw "album art url misformed";
 				}
-				else
-					this._albumArt.hide();
-			} else {
-				this._albumArt.hide();
+				else throw "no album art";
+
+				this._albumArt.remove_style_pseudo_class('generic');
+			}
+			catch(err){
+				this._albumArt.icon_name = 'folder-music-symbolic';
+				this._albumArt.add_style_pseudo_class('generic');
+			}
+			finally{
+				this._albumArt.show();
 			}
 
 			if('mpris:trackid' in metaD || 'xesam:url' in metaD) {
