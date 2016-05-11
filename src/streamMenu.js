@@ -186,7 +186,8 @@ const StreamBase = new Lang.Class({
 		this._paPath = null;
 		this._parent = parent;
 
-		this._label = new St.Label({style_class: 'simple-stream-label', reactive: true})
+		this._label = new St.Label({style_class: 'simple-stream-label',
+			reactive: true, track_hover:true});
 		this._muteBtn = new St.Button();
 		this._volSlider = new Slider.Slider(0);
 
@@ -363,6 +364,7 @@ const SimpleStream = new Lang.Class({
 				icon = new St.Icon({style_class: 'icon'});
 				icon.set_gicon(info.get_icon());
 			}
+			this._label.add_style_pseudo_class('clickable');
 		}
 
 		if(name == null){
@@ -556,6 +558,7 @@ const MPRISStream = new Lang.Class({
 		this._mediaLength = 0;
 		this._sigFVol = this._sigFMute = -1;
 		this.actor.add_style_class_name("mpris-stream");
+		this._label.add_style_pseudo_class('clickable');
 
 		this.unsetPAStream();
 
@@ -681,11 +684,20 @@ const MPRISStream = new Lang.Class({
 		this._posSlider.actor.connect('notify::hover', Lang.bind(this, function(){
 			this._setFocused(this._posSlider.actor.hover, 'active-bottom');
 		}));
+		this._label.connect('notify::hover', Lang.bind(this, function(){
+			this._setFocused(this._label.hover, 'active-top');
+		}));
+
+		this._muteBtn.set_track_hover(true);
+		this._muteBtn.connect('notify::hover', Lang.bind(this, function(){
+			this._setFocused(this._muteBtn.hover, 'active-top');
+		}));
 
 		this._volSlider.actor.connect('key-focus-in', Lang.bind(this, function(){ this._setFocused(true, 'active-top'); }));
 		this._volSlider.actor.connect('key-focus-out', Lang.bind(this, function(){ this._setFocused(false, 'active-top'); }));
 		this._posSlider.actor.connect('key-focus-in', Lang.bind(this, function(){ this._setFocused(true, 'active-bottom'); }));
 		this._posSlider.actor.connect('key-focus-out', Lang.bind(this, function(){ this._setFocused(false, 'active-bottom'); }));
+
 	},
 
 	_setFocused: function(activate, type){
