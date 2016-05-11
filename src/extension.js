@@ -299,6 +299,7 @@ const Laine = new Lang.Class({
 		this.button = new PanelMenu.Button(0.0, "", false);
 		this.button.actor.add_child(hbox);
 		this.button.menu.addMenuItem(this.laineCore);
+		this.button.menu.actor.add_style_class_name('solitary');
 
 		this.button.actor.connect('destroy',
 			Lang.bind(this.laineCore, this.laineCore._onDestroy)
