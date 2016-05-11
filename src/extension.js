@@ -78,7 +78,6 @@ function connectToPADBus(callback){
 const LaineCore = new Lang.Class({
 	Name: 'LaineCore',
 	Extends: PopupMenu.PopupMenuSection,
-	style_class: 'laine',
 
 	_init: function(container){
 		this.parent();
@@ -86,7 +85,6 @@ const LaineCore = new Lang.Class({
  		let build_cb = function(conn, manual){
 			this._paDBus = conn;
 			this._moduleLoad = manual;
-
 
 			this._sinkMenu = new SinkMenu.SinkMenu(this, this._paDBus);
 			this._sourceMenu = new SourceMenu.SourceMenu(this, this._paDBus);
@@ -101,6 +99,7 @@ const LaineCore = new Lang.Class({
 
 			this.addMenuItem(this._sinkMenu);
 			this.addMenuItem(this._sourceMenu);
+			this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 			this.addMenuItem(this._streamMenu);
 
 			container.layout();
@@ -265,13 +264,15 @@ const LaineCore = new Lang.Class({
 	}
 });
 
-
-const LaineShell = new Lang.Class({
+const Laine = new Lang.Class({
 	Name: 'Laine',
 
 	_init: function(){
 		this._settings = Convenience.getSettings();
 		this._key_MERGE_CONTROLS = Me.imports.prefs.KEY_MERGE_CONTROLS;
+		this._sigMerge = this._settings.connect(
+			'changed::'+this._key_MERGE_CONTROLS,
+			this._switchLayout);
 
 		this.laineCore = new LaineCore(this);
 		return 0;
@@ -330,6 +331,11 @@ const LaineShell = new Lang.Class({
 		return true;
 	},
 
+	_switchLayout: function(a, b, c){
+		disable();
+		enable();
+	},
+
 	destroy: function(){
 		if(this.button)
 			this.button.destroy();
@@ -339,6 +345,9 @@ const LaineShell = new Lang.Class({
 			Main.panel.statusArea.aggregateMenu.actor.disconnect(this._sigScroll);
 			delete Main.panel.statusArea.aggregateMenu._laine;
 		}
+
+		this._settings.disconnect(this._sigMerge);
+		this._sigMerge = null;
 	}
 
 });
@@ -351,12 +360,16 @@ function init(){
 }
 
 function enable(){
-	_menuButton = new LaineShell();
+	_menuButton = new Laine();
 }
 
 function disable(){
 	_menuButton.destroy();
 	Main.panel.statusArea.aggregateMenu._volume._volumeMenu.actor.show();
 	Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.show();
-	delete Main.panel.statusArea.laine;
+	if(Main.panel.statusArea.laine)
+		delete Main.panel.statusArea.laine;
+	else
+		delete Main.panel.statusArea.aggregateMenu._laine;
+	delete _menuButton;
 }
