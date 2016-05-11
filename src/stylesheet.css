@@ -76,9 +76,10 @@
 }
 
 .mpris-album-art:generic {
+	width:84px;
+	height:84px;
 	icon-size:1.8em;
 	border:1px gray solid;
-	padding:27px;
 	color: lightgray;
 }
 
@@ -94,11 +95,12 @@
 
 .mpris-meta-info {
 	font-weight: bolder;
-	font-size:0.8em
+	font-size:0.8em;
 }
 
 .mpris-player-controls {
 	padding-left:3px;
+	padding-top:10px;
 }
 
 .mpris-player-controls > StButton{
