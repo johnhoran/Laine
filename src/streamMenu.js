@@ -648,6 +648,7 @@ const MPRISStream = new Lang.Class({
 					this._albumArt.hide();
 
 					this.actor.set_vertical(false);
+					this.actor.add_style_pseudo_class('alone');
 					this._metaDisplay.add_style_pseudo_class('alone');
 					this._playBtn.add_style_pseudo_class('alone');
 					this._volCtrl.add_style_pseudo_class('alone');
@@ -780,6 +781,7 @@ const MPRISStream = new Lang.Class({
 			this._albumArt.hide();
 
 			this.actor.set_vertical(false);
+			this.actor.add_style_pseudo_class('alone');
 			this._metaDisplay.add_style_pseudo_class('alone');
 			this._playBtn.add_style_pseudo_class('alone');
 			this._volCtrl.add_style_pseudo_class('alone');
@@ -787,6 +789,7 @@ const MPRISStream = new Lang.Class({
 		else {
 
 			this.actor.set_vertical(true);
+			this.actor.remove_style_pseudo_class('alone');
 			this._metaDisplay.remove_style_pseudo_class('alone');
 			this._playBtn.remove_style_pseudo_class('alone');
 			this._volCtrl.remove_style_pseudo_class('alone');

@@ -168,8 +168,12 @@
 	background-gradient-direction: vertical;
 }
 
+.mpris-stream:active-top:alone,
 .mpris-stream:active{
 	background:rgb(74,80,80);
+	background-gradient-start: none;
+	background-gradient-end: none;
+	background-gradient-direction: none;
 }
 
 .mpris-stream:active-bottom{
