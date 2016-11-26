@@ -10,6 +10,7 @@ const _ = Gettext.gettext;
 const KEY_PA_OVER = "volume-overdrive";
 const KEY_PORT_LABEL = "show-port-label";
 const KEY_MERGE_CONTROLS = "merge-controls";
+const KEY_OPEN_SETTINGS = "open-settings";
 
 function init(){
 	Convenience.initTranslations();
@@ -40,11 +41,17 @@ const LainePrefsWidget = new GObject.Class({
 			label: _("Merge controls into aggregate menu"),
 			halign: Gtk.Align.END
 		});
+		let lbl_openSettings = new Gtk.Label({
+			label: _("Menu entry for external tool"),
+			halign: Gtk.Align.END
+		});
 
 		this.attach(lbl_volumeOverdrive, 0, 0, 1, 1);
 		this.attach_next_to(lbl_showPortLabel, lbl_volumeOverdrive,
 			Gtk.PositionType.BOTTOM, 1, 1);
 		this.attach_next_to(lbl_mergeAggregate, lbl_showPortLabel,
+			Gtk.PositionType.BOTTOM, 1, 1);
+		this.attach_next_to(lbl_openSettings, lbl_mergeAggregate,
 			Gtk.PositionType.BOTTOM, 1, 1);
 
 		//-----------------------------------------------------------
@@ -61,9 +68,9 @@ const LainePrefsWidget = new GObject.Class({
 		this._showLabelSwitch = new Gtk.Switch({
 			active: this._settings.get_boolean(KEY_PORT_LABEL)
 		});
-    this._showLabelSwitch.connect('notify::active', Lang.bind(this,
-			function(src){ this._settings.set_boolean(KEY_PORT_LABEL, src.active); }
-    ));
+        this._showLabelSwitch.connect('notify::active', Lang.bind(this,
+                function(src){ this._settings.set_boolean(KEY_PORT_LABEL, src.active); }
+        ));
 
 		this._mergeAggregateSwitch = new Gtk.Switch({
 			active: this._settings.get_boolean(KEY_MERGE_CONTROLS)
@@ -72,11 +79,20 @@ const LainePrefsWidget = new GObject.Class({
 			function(src){this._settings.set_boolean(KEY_MERGE_CONTROLS, src.active);}
 		));
 
+		this._openSettingsSwitch = new Gtk.Switch({
+			active: this._settings.get_boolean(KEY_OPEN_SETTINGS)
+		});
+		this._openSettingsSwitch.connect('notify::active', Lang.bind(this,
+			function(src){this._settings.set_boolean(KEY_OPEN_SETTINGS, src.active);}
+		));
+
 		this.attach_next_to(volumeOverdrive, lbl_volumeOverdrive,
 			Gtk.PositionType.RIGHT, 2, 1);
 		this.attach_next_to(this._showLabelSwitch, lbl_showPortLabel,
 			Gtk.PositionType.RIGHT, 1, 1);
 		this.attach_next_to(this._mergeAggregateSwitch, lbl_mergeAggregate,
+			Gtk.PositionType.RIGHT, 1, 1);
+		this.attach_next_to(this._openSettingsSwitch, lbl_openSettings,
 			Gtk.PositionType.RIGHT, 1, 1);
 		volumeOverdrive.set_hexpand(true);
 		volumeOverdrive.add_mark(100, Gtk.PositionType.BOTTOM, null);

@@ -102,7 +102,27 @@ const LaineCore = new Lang.Class({
 			this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 			this.addMenuItem(this._streamMenu);
 
-			container.layout();
+            _settings = Convenience.getSettings();
+            let boolSettings=_settings.get_boolean('open-settings')
+            if (boolSettings) {
+                this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+                // TO DO allow to change application name in preferences
+                this._settingsAppName = 'pavucontrol';
+
+                let _appSys = Shell.AppSystem.get_default();
+                let _settingsApp = _appSys.lookup_app(this._settingsAppName+'.desktop');
+                    
+                this._settingsMenu  = new PopupMenu.PopupMenuItem(_('Settings...'));
+                this._settingsMenu.connect('activate', function () {
+                    if (_settingsApp != null) {
+                        _settingsApp.activate();
+                        //this.menu.close();
+                    }
+                });
+                this.addMenuItem(this._settingsMenu);
+            }
+               
+            container.layout();
 		};
 
 		try{
@@ -273,8 +293,11 @@ const Laine = new Lang.Class({
 		this._sigMerge = this._settings.connect(
 			'changed::'+this._key_MERGE_CONTROLS,
 			this._switchLayout);
-
-		this.laineCore = new LaineCore(this);
+		this._sigSettings = this._settings.connect(
+			'changed::open-settings',
+			this._switchLayout);
+        
+        this.laineCore = new LaineCore(this);
 		return 0;
 	},
 
@@ -347,7 +370,9 @@ const Laine = new Lang.Class({
 		}
 
 		this._settings.disconnect(this._sigMerge);
+		this._settings.disconnect(this._sigSettings);
 		this._sigMerge = null;
+		this._sigSettings = null;
 	}
 
 });

@@ -23,5 +23,12 @@
 				Show controls as part of aggregate menu instead of in seperate dropdown.
 			</description>
 		</key>
+		<key type="b" name="open-settings">
+			<default>true</default>
+			<summary>Menu entry for external tool</summary>
+			<description>
+				Add a menu entry to open an external audio control tool, like pavucontrol
+			</description>
+		</key>
 	</schema>
 </schemalist>
