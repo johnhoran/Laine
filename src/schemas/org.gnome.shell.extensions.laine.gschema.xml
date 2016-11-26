@@ -25,9 +25,16 @@
 		</key>
 		<key type="b" name="open-settings">
 			<default>true</default>
-			<summary>Menu entry for external tool</summary>
+			<summary>Menu entry for configuration tool</summary>
 			<description>
-				Add a menu entry to open an external audio control tool, like pavucontrol
+				Add a menu entry to open a configuration tool for pulseaudio, like pavucontrol
+			</description>
+		</key>
+		<key type="s" name="app-settings">
+			<default>'pavucontrol'</default>
+			<summary>Configuration tool to open</summary>
+			<description>
+				The application to configura pulseaudio to open, default to pavucontrol.
 			</description>
 		</key>
 	</schema>

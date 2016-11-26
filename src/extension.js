@@ -102,23 +102,28 @@ const LaineCore = new Lang.Class({
 			this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 			this.addMenuItem(this._streamMenu);
 
-            _settings = Convenience.getSettings();
+            let _settings = Convenience.getSettings();
             let boolSettings=_settings.get_boolean('open-settings')
             if (boolSettings) {
-                this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+                //this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
                 // TO DO allow to change application name in preferences
-                this._settingsAppName = 'pavucontrol';
+                let _settingsAppName = _settings.get_string('app-settings');
+                //let _settingsAppName = 'pavucontrol';
 
                 let _appSys = Shell.AppSystem.get_default();
-                let _settingsApp = _appSys.lookup_app(this._settingsAppName+'.desktop');
+                let _settingsApp = _appSys.lookup_app(_settingsAppName+'.desktop');
                     
-                this._settingsMenu  = new PopupMenu.PopupMenuItem(_('Settings...'));
-                this._settingsMenu.connect('activate', function () {
-                    if (_settingsApp != null) {
+                this._settingsMenu  = new PopupMenu.PopupMenuItem(_('PulseAudio Settings'));
+                if (_settingsApp != null) {
+                    this._settingsMenu.connect('activate', function () {
                         _settingsApp.activate();
-                        //this.menu.close();
-                    }
-                });
+                        if(Main.panel.statusArea.laine) {
+                            Main.panel.statusArea.laine.menu.close();
+                        }
+                    });
+                } else {
+                    this._settingsMenu.setActive(false);
+                }
                 this.addMenuItem(this._settingsMenu);
             }
                

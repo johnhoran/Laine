@@ -1,6 +1,7 @@
 const Lang = imports.lang;
 const Gtk = imports.gi.Gtk;
 const GObject = imports.gi.GObject;
+const GLib = imports.gi.GLib;
 
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
@@ -42,7 +43,11 @@ const LainePrefsWidget = new GObject.Class({
 			halign: Gtk.Align.END
 		});
 		let lbl_openSettings = new Gtk.Label({
-			label: _("Menu entry for external tool"),
+			label: _("Add menu entry for configuration tool"),
+			halign: Gtk.Align.END
+		});
+		let lbl_appSettings = new Gtk.Label({
+			label: _("Configuration tool to open"),
 			halign: Gtk.Align.END
 		});
 
@@ -52,6 +57,8 @@ const LainePrefsWidget = new GObject.Class({
 		this.attach_next_to(lbl_mergeAggregate, lbl_showPortLabel,
 			Gtk.PositionType.BOTTOM, 1, 1);
 		this.attach_next_to(lbl_openSettings, lbl_mergeAggregate,
+			Gtk.PositionType.BOTTOM, 1, 1);
+		this.attach_next_to(lbl_appSettings, lbl_openSettings,
 			Gtk.PositionType.BOTTOM, 1, 1);
 
 		//-----------------------------------------------------------
@@ -86,6 +93,24 @@ const LainePrefsWidget = new GObject.Class({
 			function(src){this._settings.set_boolean(KEY_OPEN_SETTINGS, src.active);}
 		));
 
+        //this._appSettingsChooser = new Gtk.AppChooserWidget({ show_all: true });
+        //this._appSettingsChooser.connect('application-selected', function(entry) {
+            //this._settings.set_string('app-settings', get_app_info());
+        //});
+        
+		this._appSettingsEntry =  new Gtk.Entry();
+        //this._appSettingsEntry.set_placeholder_text(_("PulseAudio configuration tool"));
+        this._appSettingsEntry.set_text(this._settings.get_string('app-settings'));
+        let completion =  new Gtk.EntryCompletion();
+        this._appSettingsEntry.set_completion(completion);
+        completion.set_model(this._getDesktopFilesList());
+        completion.set_text_column(0)
+
+        this._appSettingsEntry.connect('notify::text', function(entry) {
+            this._settings.set_string('app-settings', entry.text.trim());
+        });
+
+
 		this.attach_next_to(volumeOverdrive, lbl_volumeOverdrive,
 			Gtk.PositionType.RIGHT, 2, 1);
 		this.attach_next_to(this._showLabelSwitch, lbl_showPortLabel,
@@ -93,6 +118,8 @@ const LainePrefsWidget = new GObject.Class({
 		this.attach_next_to(this._mergeAggregateSwitch, lbl_mergeAggregate,
 			Gtk.PositionType.RIGHT, 1, 1);
 		this.attach_next_to(this._openSettingsSwitch, lbl_openSettings,
+			Gtk.PositionType.RIGHT, 1, 1);
+		this.attach_next_to(this._appSettingsEntry, lbl_appSettings,
 			Gtk.PositionType.RIGHT, 1, 1);
 		volumeOverdrive.set_hexpand(true);
 		volumeOverdrive.add_mark(100, Gtk.PositionType.BOTTOM, null);
@@ -103,8 +130,25 @@ const LainePrefsWidget = new GObject.Class({
 			hexpand:true
 		}),this._showLabelSwitch, Gtk.PositionType.RIGHT, 1, 1);
 
-	}
+	},
+
+    _getDesktopFilesList: function() {
+        let sListStore = new Gtk.ListStore();
+        sListStore.set_column_types([GObject.TYPE_STRING]);
+        let [_, out, err, stat] = GLib.spawn_command_line_sync('sh -c "for app in /usr/share/applications/*.desktop ~/.local/share/applications/*.desktop; do app=\"${app##*/}\"; echo \"${app%.desktop}\"; done"');
+        
+        let sList = out.toString().split("\n");
+        sList = sList.sort(
+            function (a, b) {
+                return a.toLowerCase().localeCompare(b.toLowerCase());
+            })
+        for (let i in sList) {
+            sListStore.set(sListStore.append(), [0], [sList[i]]);
+        }
+        return sListStore;
+    }
 });
+
 
 function buildPrefsWidget() {
 	let widget = new LainePrefsWidget();
