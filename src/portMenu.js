@@ -41,27 +41,8 @@ const PortMenu = new Lang.Class({
 		let muteBtn = new St.Button({child: this._icon});
 		this._slider = new Slider.Slider(0);
 
-		//Populate all the devices
-		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.freedesktop.DBus.Properties', 'Get',
-			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', type+'s']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
-			Lang.bind(this, function(conn, query){
-				let response = conn.call_finish(query).get_child_value(0).unpack();
-				for(let i = 0; i < response.n_children(); i++){
-					let devicePath = response.get_child_value(i).get_string()[0];
-					this._addDevice(devicePath);
-				}
-			})
-		);
-
-		//Got all the devices, so lets find the default one.
-		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.freedesktop.DBus.Properties', 'Get',
-			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', 'Fallback'+type]), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
-			Lang.bind(this, function(conn, query){
-				let response = conn.call_finish(query);
-				let dSink = response.get_child_value(0).unpack().get_string()[0];
-				this._setActiveDevice(this._devices[dSink]);
-			})
-		);
+		//Asynchronously populate all the devices
+		this._initDevices(this._paDBus, this._type);
 
 		//Laying stuff out
 		this.actor.add(muteBtn);
@@ -90,20 +71,49 @@ const PortMenu = new Lang.Class({
 		this._key_SHOW_LABEL = Me.imports.prefs.KEY_PORT_LABEL;
 
 
-		this._sigFall = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'Fallback'+type+'Updated',
+		this._sigFallback = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'Fallback'+type+'Updated',
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onDevChange), null );
-		this._sigSkA = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'New'+type,
+		this._sigNewDevice = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'New'+type,
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onDevChange), null );
-		this._sigSkR = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', type+'Removed',
+		this._sigRemovedDevice = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', type+'Removed',
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onDevChange), null );
 
 		this.actor.connect('scroll-event', Lang.bind(this, this.scroll));
 		this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
-		this._sigShowLbl = this._settings.connect('changed::'+this._key_SHOW_LABEL, Lang.bind(this, this._setNameLabelVisiblity));
+		this._sigShowLabel = this._settings.connect('changed::'+this._key_SHOW_LABEL, Lang.bind(this, this._setNameLabelVisiblity));
 
 		this._setNameLabelVisiblity();
 	},
 
+	_initDevices: function(paConn, type) {
+		// Asynchronous call to dbus
+		paConn.call(null, '/org/pulseaudio/core1', 'org.freedesktop.DBus.Properties', 'Get',
+			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', type+'s']), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
+			Lang.bind(this, function(conn, query){
+				let response = conn.call_finish(query).get_child_value(0).unpack();
+				for(let i = 0; i < response.n_children(); i++){
+					let devicePath = response.get_child_value(i).get_string()[0];
+					this._addDevice(devicePath);
+				};
+				//Got all the devices, so lets find the default one.
+				this._initFallbackDevice(paConn, type);
+			})
+		);
+	},
+
+	_initFallbackDevice: function(paConn, type) {
+		// Asynchronous call to dbus
+		paConn.call(null, '/org/pulseaudio/core1', 'org.freedesktop.DBus.Properties', 'Get',
+			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', 'Fallback'+type]), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
+			Lang.bind(this, function(conn, query){
+				let response = conn.call_finish(query);
+				let fallback = response.get_child_value(0).unpack().get_string()[0];
+				if (fallback in this._devices) {
+					this._setActiveDevice(this._devices[fallback]);
+				};
+			})
+		);
+	},
 
 	_onKeyPressEvent: function(actor, event) {
 		let key = event.get_key_symbol();
@@ -139,11 +149,12 @@ const PortMenu = new Lang.Class({
 	},
 
 	_setActiveDevice: function(dev){
-		if(this._activeDevice in this._devices)
+		if(this._activeDevice != undefined && this._activeDevice._path in this._devices) {
 			this._activeDevice.unsetActiveDevice();
+		};
 
-		dev.setActiveDevice();
 		this._activeDevice = dev;
+		this._activeDevice.setActiveDevice();
 	},
 
 	setVolume: function(volume){
@@ -208,12 +219,12 @@ const PortMenu = new Lang.Class({
 	},
 
 	_onDestroy: function(){
-		this._paDBus.signal_unsubscribe(this._sigFall);
-		this._paDBus.signal_unsubscribe(this._sigSkA);
-		this._paDBus.signal_unsubscribe(this._sigSkR);
-		if(this._sigShowLbl){
-			this._settings.disconnect(this._sigShowLbl);
-			delete this._sigShowLbl;
+		this._paDBus.signal_unsubscribe(this._sigFallback);
+		this._paDBus.signal_unsubscribe(this._sigNewDevice);
+		this._paDBus.signal_unsubscribe(this._sigRemovedDevice);
+		if(this._sigShowLabel){
+			this._settings.disconnect(this._sigShowLabel);
+			delete this._sigShowLabel;
 		}
 	}
 	
