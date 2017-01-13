@@ -129,6 +129,15 @@ const PortMenu = new Lang.Class({
 		this._devices[path] = device;
 	},
 
+	_removeDevice: function(path) {
+		if(path in this._devices){
+			this._devices[path].destroy();
+			delete this._devices[path];
+
+			this._updateExpandBtnVisiblity();
+		}
+	},
+
 	_setActiveDevice: function(dev){
 		if(this._activeDevice in this._devices)
 			this._activeDevice.unsetActiveDevice();
@@ -194,12 +203,7 @@ const PortMenu = new Lang.Class({
 		else if(signal == 'New'+this._type )
 			this._addDevice(addr);
 		else if(signal == this._type + 'Removed'){
-			if(addr in this._devices){
-				this._devices[addr].destroy();
-				delete this._devices[addr];
-
-				this._updateExpandBtnVisiblity();
-			}
+			this._removeDevice(addr);
 		}
 	},
 
@@ -246,16 +250,45 @@ const Port = new Lang.Class({
 			})
 		);
 
-		/*
-		this._paDBus.call(null, path, 'org.freedesktop.DBus.Properties', 'Get',
-			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.DevicePort', 'Description']), 
-			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
-			Lang.bind(this, function(conn, query){
-				this._name = conn.call_finish(query).get_child_value(0).unpack().get_string()[0];
-				this.label.set_text(this.getName());
-				this.emit('name-set');
-			})
-		);*/
+		this.connect('activate', Lang.bind(this._device, this._device._onPortSelect));
+	},
+
+	getName: function(){
+		let name = this._device._name;
+		if(this._device._numPorts > 1)
+			name = name.concat(": ", this._name);
+		return name;
+	},
+
+	_giveName: function(textCallback){
+		let name = this._name;
+		let sigId;
+		if(name === undefined){
+			sigId = this.connect('name-set', Lang.bind(this, function(){
+				textCallback(this.getName(), this._type);
+				this.disconnect(sigId);
+			}));
+		} else {
+			textCallback(this.getName(), this._type);
+		}
+	}
+
+});
+
+const VirtualPort = new Lang.Class({
+	Name: 'PulseVirtualPort',
+	Extends: PopupMenu.PopupMenuItem,
+
+	_init: function(path, paconn, device){
+		this.parent('');
+		this._paDBus = paconn;
+		this._path = path;
+		this._device = device
+
+		this._type = 'virtual';
+		this._name = this._device._name;
+		this.label.set_text(this.getName());
+		this.emit('name-set');
 
 		this.connect('activate', Lang.bind(this._device, this._device._onPortSelect));
 	},
@@ -290,6 +323,7 @@ const Device = new Lang.Class({
 		this._paDBus = paconn;
 		this._path = path;
 		this._ports = {};
+		this._virtual = null;
 		this._base = base;
 		this._activePort = null;
 
@@ -298,6 +332,7 @@ const Device = new Lang.Class({
 
 		this._sigVol = this._sigMute = this._sigPort = 0;
 		this._numPorts = 0;
+
 
 		this._paDBus.call(null, this._path, 'org.freedesktop.DBus.Properties', 'Get',
 			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'PropertyList']),
@@ -330,16 +365,24 @@ const Device = new Lang.Class({
 					try{
 						let portPaths = conn.call_finish(query).get_child_value(0).unpack();
 						this._numPorts = portPaths.n_children(); 
-						for(let j = 0; j < this._numPorts; j++){
-							let val = portPaths.get_child_value(j);
-							if(val != null) {
-								let portPath = val.get_string()[0];
-								let port = new Port(portPath, this._paDBus, this);
-								this._ports[portPath] = port;
-								this._base.menu.addMenuItem(port);
+						if (this._numPorts > 0) {
+							this._virtual = null;
+							for(let j = 0; j < this._numPorts; j++){
+								let val = portPaths.get_child_value(j);
+								if(val != null) {
+									let portPath = val.get_string()[0];
+									let port = new Port(portPath, this._paDBus, this);
+									this._ports[portPath] = port;
+									this._base.menu.addMenuItem(port);
 
-								this._base._updateExpandBtnVisiblity();
+									this._base._updateExpandBtnVisiblity();
+								}
 							}
+						} else if(this._base._type == 'Sink') {
+							this._virtual = new VirtualPort(this._path, this._paDBus, this);
+							this._base.menu.addMenuItem(this._virtual);
+							this._base._updateExpandBtnVisiblity();
+							//log('Device', this._name, ', Virtual:', this._path);
 						}
 					} catch(err){
 						//pulseaudio does something which creates, and then deletes a card when switching sources.  Therefore the listener will trigger this,
@@ -350,6 +393,7 @@ const Device = new Lang.Class({
 				}
 			)
 		);
+		
 		this._setOverdriveLevel();
 		this._sigOverdrive = this._settings.connect('changed::'+this._key_PA_OVERDRIVE, Lang.bind(this, this._setOverdriveLevel));
 
@@ -359,11 +403,6 @@ const Device = new Lang.Class({
 	setActiveDevice: function(){
 		this._sigVol = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'VolumeUpdated',
 			this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
-		this._sigMute = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'MuteUpdated',
-			this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
-		this._sigPort = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
-			this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onPortChanged), null );
-
 		this._paDBus.call(null, this._path, 'org.freedesktop.DBus.Properties', 'Get',
 			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'Volume']), 
 			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
@@ -373,6 +412,8 @@ const Device = new Lang.Class({
 			})
 		);
 
+		this._sigMute = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'MuteUpdated',
+			this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
 		this._paDBus.call(null, this._path, 'org.freedesktop.DBus.Properties', 'Get',
 			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'Mute']), 
 			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
@@ -382,17 +423,37 @@ const Device = new Lang.Class({
 			})
 		);
 
-		this._paDBus.call(null, this._path, 'org.freedesktop.DBus.Properties', 'Get',
-			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'ActivePort']), 
-			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
-			Lang.bind(this, function(conn, query){
-				let response = conn.call_finish(query).get_child_value(0).unpack();
-				let port = response.get_string()[0];
-				this.setActivePort(this._ports[port]);
-			})
-		);
+		if (this._numPorts > 0) {
+			this._sigPort = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
+				this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onPortChanged), null );
+			this._paDBus.call(null, this._path, 'org.freedesktop.DBus.Properties', 'Get',
+				GLib.Variant.new('(ss)', ['org.PulseAudio.Core1.Device', 'ActivePort']), 
+				GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
+				Lang.bind(this, function(conn, query){
+					let response = conn.call_finish(query).get_child_value(0).unpack();
+					let port = response.get_string()[0];
+					this.setActivePort(this._ports[port]);
+				})
+			);
+		} else if(this._virtual != null) {
+			this.setActivePort(this._virtual);
+		} else {
+			this.setDumbActivePort();
+		};
+		
 
 		this._base.emit('fallback-updated', this._path);
+	},
+
+	setDumbActivePort: function(){
+		//Unset the currently active port
+		if(this._activePort != null)
+			this._activePort.setOrnament(PopupMenu.Ornament.NONE);
+
+		this._activePort = null;
+
+		this._base._nameLbl.set_text("");
+		this._base._setMuteIcon("");
 	},
 
 	setActivePort: function(port){
@@ -410,12 +471,16 @@ const Device = new Lang.Class({
 	},
 
 	unsetActiveDevice: function(){
-		this._activePort.setOrnament(PopupMenu.Ornament.NONE);
+		if(this._activePort != null) {
+			this._activePort.setOrnament(PopupMenu.Ornament.NONE);
+		};
 		this._activePort = null;
 
 		this._paDBus.signal_unsubscribe(this._sigVol);
 		this._paDBus.signal_unsubscribe(this._sigMute);
-		this._paDBus.signal_unsubscribe(this._sigPort);
+		if (this._numPorts > 0) {
+			this._paDBus.signal_unsubscribe(this._sigPort);
+		};
 
 		this._sigVol = this._sigMute = this._sigPort = 0;
 	},
@@ -536,7 +601,7 @@ const Device = new Lang.Class({
 	},
 
 	_onPortSelect: function(port){
-		if(this._activePort != port){
+		if (this._numPorts > 0 && this._activePort != port){
 			let value = GLib.Variant.new_object_path(port._path);
 			this._paDBus.call(null, this._path, 'org.freedesktop.DBus.Properties', 'Set',
 				GLib.Variant.new('(ssv)', ['org.PulseAudio.Core1.Device', 'ActivePort', value]), null, 
@@ -556,12 +621,18 @@ const Device = new Lang.Class({
 		if(this._sigVol != 0){
 			this._paDBus.signal_unsubscribe(this._sigVol);
 			this._paDBus.signal_unsubscribe(this._sigMute);
-			this._paDBus.signal_unsubscribe(this._sigPort);
+			if (this._numPorts > 0) {
+				this._paDBus.signal_unsubscribe(this._sigPort);
+			};
 		}
 	},
 
 	destroy: function(){
-		for(let p in this._ports)
+		for(let p in this._ports) {
 			this._ports[p].destroy();
+		};
+		if (this._virtual != null) {
+			this._virtual.destroy();
+		};
 	}
 });
