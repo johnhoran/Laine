@@ -75,7 +75,10 @@ const SourceMenu = new Lang.Class({
 
 
 	_setMuteIcon: function(desc){
-		this._icon.icon_name = 'audio-input-microphone-symbolic';
+		if(desc.endsWith("-mic"))
+			this._icon.icon_name = 'audio-headset-symbolic';
+		else
+            this._icon.icon_name = 'audio-input-microphone-symbolic';
 	},
 
 	_isExpandBtnVisible: function(){
