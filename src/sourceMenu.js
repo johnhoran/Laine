@@ -60,11 +60,11 @@ const SourceMenu = new Lang.Class({
 	},
 
 	_onAddStream: function(conn, sender, object, iface, signal, param, user_data) {
-        let path = param.get_child_value(0).unpack();
-        this._addStream(path);
-    },
-    
-    _onRemoveStream: function(conn, sender, object, iface, signal, param, user_data) {
+		let path = param.get_child_value(0).unpack();
+		this._addStream(path);
+	},
+	
+	_onRemoveStream: function(conn, sender, object, iface, signal, param, user_data) {
 		let path = param.get_child_value(0).unpack();
 		let index = this._streams.indexOf(path);
 		if(index != -1){
@@ -78,7 +78,7 @@ const SourceMenu = new Lang.Class({
 		if(desc.endsWith("-mic"))
 			this._icon.icon_name = 'audio-headset-symbolic';
 		else
-            this._icon.icon_name = 'audio-input-microphone-symbolic';
+			this._icon.icon_name = 'audio-input-microphone-symbolic';
 	},
 
 	_isExpandBtnVisible: function(){
