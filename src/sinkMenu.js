@@ -26,6 +26,8 @@ const SinkMenu = new Lang.Class({
 			this._icon.icon_name = 'audio-headphones-symbolic';
 		else if(desc.startsWith("hdmi") || desc.startsWith("iec958"))
 			this._icon.icon_name = 'audio-card-symbolic';
+		else if(desc.endsWith("virtual"))
+			this._icon.icon_name = 'audio-x-generic-symbolic';
 		else
 			this._icon.icon_name = 'audio-speakers-symbolic';
 	},
