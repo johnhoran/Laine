@@ -35,11 +35,8 @@ const SourceMenu = new Lang.Class({
 		this._updateVisibility();
 
 		this._sigNewStr = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewRecordStream',
-			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, function(conn, sender, object, iface, signal, param, user_data){
-				let streamPath = param.get_child_value(0).unpack();
-				this._addStream(streamPath);
-			}), null );
-		this._sigNewStr = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'RecordStreamRemoved',
+			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onAddStream), null );
+		this._sigRemStr = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'RecordStreamRemoved',
 			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onRemoveStream), null );
 
 		this.connect('fallback-updated', Lang.bind(this, this._onSetDefaultSource));
@@ -62,14 +59,18 @@ const SourceMenu = new Lang.Class({
 		);
 	},
 
-	_onRemoveStream: function(conn, sender, object, iface, signal, param, user_data) {
+	_onAddStream: function(conn, sender, object, iface, signal, param, user_data) {
+        let path = param.get_child_value(0).unpack();
+        this._addStream(path);
+    },
+    
+    _onRemoveStream: function(conn, sender, object, iface, signal, param, user_data) {
 		let path = param.get_child_value(0).unpack();
 		let index = this._streams.indexOf(path);
 		if(index != -1){
 			this._streams.splice(index, 1);
 			this._updateVisibility();
-		}
-
+		};
 	},
 
 
