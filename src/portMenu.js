@@ -1,4 +1,5 @@
 const Lang = imports.lang;
+
 const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
 const St = imports.gi.St;
@@ -10,11 +11,17 @@ const Slider = imports.ui.slider;
 const PopupMenu = imports.ui.popupMenu;
 const Signals = imports.signals;
 
-const Me = imports.misc.extensionUtils.getCurrentExtension();
+const Util = imports.misc.util;
+const ExtensionUtils = imports.misc.extensionUtils;
+const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
 
 const VOLUME_NOTIFY_ID = 1;
 const PA_MAX = 65536;
+
+const UPDATE_FALLBACK_SINK_CMD = "/usr/bin/sh -c  \"/usr/bin/pacmd set-default-sink $(/usr/bin/pacmd list-sinks | awk '/* index:/ {print $3}')\"";
+const UPDATE_FALLBACK_SOURCE_CMD = "/usr/bin/sh -c  \"/usr/bin/pacmd set-default-source $(/usr/bin/pacmd list-sources | awk '/* index:/ {print $3}')\"";
+const UPDATE_FALLBACK_CMD = {'Sink': UPDATE_FALLBACK_SINK_CMD, 'Source': UPDATE_FALLBACK_SOURCE_CMD};
 
 const PortMenu = new Lang.Class({
 	Name: 'PortMenu',
@@ -102,14 +109,26 @@ const PortMenu = new Lang.Class({
 	},
 
 	_initFallbackDevice: function(paConn, type) {
+		// Bug in PulseAudio DBus: fallback device is not updated when it is removed
+		//reset default device
+		Util.spawnCommandLine(UPDATE_FALLBACK_CMD[this._type]);
 		// Asynchronous call to dbus
 		paConn.call(null, '/org/pulseaudio/core1', 'org.freedesktop.DBus.Properties', 'Get',
 			GLib.Variant.new('(ss)', ['org.PulseAudio.Core1', 'Fallback'+type]), GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null,
 			Lang.bind(this, function(conn, query){
-				let response = conn.call_finish(query);
-				let fallback = response.get_child_value(0).unpack().get_string()[0];
-				if (fallback in this._devices) {
-					this._setActiveDevice(this._devices[fallback]);
+				try {
+					let response = conn.call_finish(query);
+					let fallback = response.get_child_value(0).unpack().get_string()[0];
+					if (fallback in this._devices) {
+						this._setActiveDevice(this._devices[fallback]);
+					};
+				} catch(err){
+					//pulseaudio does something which creates, and then deletes a device when switching sinks.  Therefore the fallback is not well defined.
+					if(!err.message.startsWith(" Gio.IOErrorEnum: GDBus.Error:org.PulseAudio.Core1.NoSuchPropertyError: There are no sinks, and therefore no fallback sink either.")) {
+						throw err;
+					} else {
+						log('Warning: ' + err.message);
+					};
 				};
 			})
 		);
@@ -137,15 +156,34 @@ const PortMenu = new Lang.Class({
 	_addDevice: function(path) {
 		let device = new Device(path, this._paDBus, this);
 		this._devices[path] = device;
+		// Bug in PulseAudio DBus: fallback device is not updated when it is removed
+		if (this._activeDeviceTempPath != undefined || this._activeDeviceTempPath != null) {
+			delete this._activeDeviceTempPath;
+			this._initFallbackDevice(this._paDBus, this._type);
+			////set active device to the same sink address
+			//Util.spawnCommandLine(UPDATE_FALLBACK_CMD[this._type]);
+
+			//this._setActiveDevice(this._devices[path]);
+			////log("Warning: Active Device defined again: "+path);
+		};
+		
 	},
 
 	_removeDevice: function(path) {
 		if(path in this._devices){
+			// Bug in PulseAudio DBus: fallback device is not updated when it is removed
+			if (this._activeDevice == this._devices[path]) {
+				this._activeDeviceTempPath = path;
+				this._initFallbackDevice(this._paDBus, this._type);
+				//Util.spawnCommandLine(UPDATE_FALLBACK_CMD[this._type]);
+			};
+
+			//remove device
 			this._devices[path].destroy();
 			delete this._devices[path];
 
 			this._updateExpandBtnVisiblity();
-		}
+		};
 	},
 
 	_setActiveDevice: function(dev){
@@ -207,7 +245,9 @@ const PortMenu = new Lang.Class({
 		let addr = param.get_child_value(0).get_string()[0];
 		
 		if(signal == 'Fallback'+ this._type +'Updated' ){
-			this._activeDevice.unsetActiveDevice();
+			if(this._activeDevice != undefined) {
+				this._activeDevice.unsetActiveDevice();
+			};
 			this._activeDevice = this._devices[addr];
 			this._activeDevice.setActiveDevice();
 		} 
