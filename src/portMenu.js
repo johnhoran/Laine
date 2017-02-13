@@ -235,7 +235,9 @@ const PortMenu = new Lang.Class({
     },
 
     setVolume: function(volume){
-        this._activeDevice.setVolume(volume);
+        if(this._activeDevice != undefined) {
+            this._activeDevice.setVolume(volume);
+        };
     },
 
     _notifyVolumeChange: function() {
@@ -281,12 +283,18 @@ const PortMenu = new Lang.Class({
     },
 
     _onDevChange: function(conn, sender, object, iface, signal, param, user_data){
-        let addr = param.get_child_value(0).get_string()[0];
-
+        let addr = null;
+        try {
+            addr = param.get_child_value(0).get_string()[0];
+        } catch(err){
+            if(!(err instanceof TypeError)) {
+                throw err;
+            };
+        };
+        
         if (signal == 'Fallback'+ this._type +'Updated') {
             this._setActiveDevice(this._devices[addr]);
         } else if (signal == 'Fallback'+ this._type +'Unset') {
-            log("Fallback Unset");
             this._unsetActiveDevice();
         } else if (signal == 'New'+this._type) {
             this._addDevice(addr);

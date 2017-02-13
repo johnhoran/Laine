@@ -173,7 +173,7 @@ const LaineCore = new Lang.Class({
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.FallbackSinkUpdated', []]),
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
 		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
-			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.FallbackSinkUnset']),
+			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.FallbackSinkUnset', []]),
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
 
 		//Source listening
@@ -187,7 +187,7 @@ const LaineCore = new Lang.Class({
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.FallbackSourceUpdated', []]),
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
 		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
-			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.FallbackSourceUnset']),
+			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.FallbackSourceUnset', []]),
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
 
 
@@ -413,5 +413,5 @@ function disable(){
 		delete Main.panel.statusArea.laine;
 	else
 		delete Main.panel.statusArea.aggregateMenu._laine;
-	delete _menuButton;
+	_menuButton = null;
 }

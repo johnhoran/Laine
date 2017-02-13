@@ -119,7 +119,7 @@ const StreamMenu = new Lang.Class({
                 resp = resp.get_child_value(0).unpack();
 
                 let cPath = resp.get_string()[0];
-                if(cPath != path)
+                if(cPath != path && this._defaultSink != undefined)
                     this._paDBus.call(null, path, 'org.PulseAudio.Core1.Stream', 'Move',
                         GLib.Variant.new('(o)', [this._defaultSink]), null, Gio.DBusCallFlags.NONE, -1, null, null);
             })
