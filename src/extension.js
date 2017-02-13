@@ -102,32 +102,32 @@ const LaineCore = new Lang.Class({
 			this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 			this.addMenuItem(this._streamMenu);
 
-            let _settings = Convenience.getSettings();
-            let boolSettings=_settings.get_boolean('open-settings')
-            if (boolSettings) {
-                //this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-                // TO DO allow to change application name in preferences
-                let _settingsAppName = _settings.get_string('app-settings');
-                //let _settingsAppName = 'pavucontrol';
+			let _settings = Convenience.getSettings();
+			let boolSettings=_settings.get_boolean('open-settings')
+			if (boolSettings) {
+				//this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+				// TO DO allow to change application name in preferences
+				let _settingsAppName = _settings.get_string('app-settings');
+				//let _settingsAppName = 'pavucontrol';
 
-                let _appSys = Shell.AppSystem.get_default();
-                let _settingsApp = _appSys.lookup_app(_settingsAppName+'.desktop');
-                    
-                this._settingsMenu  = new PopupMenu.PopupMenuItem(_('PulseAudio Settings'));
-                if (_settingsApp != null) {
-                    this._settingsMenu.connect('activate', function () {
-                        _settingsApp.activate();
-                        if(Main.panel.statusArea.laine) {
-                            Main.panel.statusArea.laine.menu.close();
-                        }
-                    });
-                } else {
-                    this._settingsMenu.setActive(false);
-                }
-                this.addMenuItem(this._settingsMenu);
-            }
-               
-            container.layout();
+				let _appSys = Shell.AppSystem.get_default();
+				let _settingsApp = _appSys.lookup_app(_settingsAppName+'.desktop');
+
+				this._settingsMenu  = new PopupMenu.PopupMenuItem(_('PulseAudio Settings'));
+				if (_settingsApp != null) {
+					this._settingsMenu.connect('activate', function () {
+						_settingsApp.activate();
+						if(Main.panel.statusArea.laine) {
+							Main.panel.statusArea.laine.menu.close();
+						}
+					});
+				} else {
+					this._settingsMenu.setActive(false);
+				}
+				this.addMenuItem(this._settingsMenu);
+			}
+
+			container.layout();
 		};
 
 		try{
@@ -172,6 +172,9 @@ const LaineCore = new Lang.Class({
 		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.FallbackSinkUpdated', []]),
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
+			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.FallbackSinkUnset']),
+			null, Gio.DBusCallFlags.NONE, -1, null, null);
 
 		//Source listening
 		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
@@ -182,6 +185,9 @@ const LaineCore = new Lang.Class({
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
 		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
 			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.FallbackSourceUpdated', []]),
+			null, Gio.DBusCallFlags.NONE, -1, null, null);
+		this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'ListenForSignal',
+			GLib.Variant.new('(sao)', ['org.PulseAudio.Core1.FallbackSourceUnset']),
 			null, Gio.DBusCallFlags.NONE, -1, null, null);
 
 
@@ -262,6 +268,9 @@ const LaineCore = new Lang.Class({
 				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.FallbackSinkUpdated']),
 				null, Gio.DBusCallFlags.NONE, -1, null, null);
 			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
+				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.FallbackSinkUnset']),
+				null, Gio.DBusCallFlags.NONE, -1, null, null);
+			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
 				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.NewSource']),
 				null, Gio.DBusCallFlags.NONE, -1, null, null);
 			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
@@ -269,6 +278,9 @@ const LaineCore = new Lang.Class({
 				null, Gio.DBusCallFlags.NONE, -1, null, null);
 			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
 				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.FallbackSourceUpdated']),
+				null, Gio.DBusCallFlags.NONE, -1, null, null);
+			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
+				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.FallbackSourceUnset']),
 				null, Gio.DBusCallFlags.NONE, -1, null, null);
 			this._paDBus.call(null, '/org/pulseaudio/core1', 'org.PulseAudio.Core1', 'StopListeningForSignal',
 				GLib.Variant.new('(s)', ['org.PulseAudio.Core1.NewRecordStream']),
@@ -301,8 +313,8 @@ const Laine = new Lang.Class({
 		this._sigSettings = this._settings.connect(
 			'changed::open-settings',
 			this._switchLayout);
-        
-        this.laineCore = new LaineCore(this);
+
+		this.laineCore = new LaineCore(this);
 		return 0;
 	},
 
