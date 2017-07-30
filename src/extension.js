@@ -360,7 +360,8 @@ function init(){
 }
 
 function enable(){
-	_menuButton = new Laine();
+	if(typeof Main.panel.statusArea.laine === "undefined")
+		_menuButton = new Laine();
 }
 
 function disable(){
