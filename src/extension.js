@@ -273,6 +273,10 @@ const Laine = new Lang.Class({
 		this._sigMerge = this._settings.connect(
 			'changed::'+this._key_MERGE_CONTROLS,
 			this._switchLayout);
+		this._key_ICON_POSITION = Me.imports.prefs.KEY_ICON_POSITION;
+		this._sigPosChange = this._settings.connect(
+			'changed::' + this._key_ICON_POSITION,
+			Lang.bind(this, this._switchEnforceIconPosition));
 
 		this.laineCore = new LaineCore(this);
 		return 0;
@@ -308,9 +312,22 @@ const Laine = new Lang.Class({
 			Lang.bind(this.laineCore._sinkMenu, this.laineCore._sinkMenu.scroll)
 		);
 
-		if(Main.panel.statusArea.laine != 'undefined')
+		if(typeof Main.panel.statusArea.laine !== 'undefined')
 			delete Main.panel.statusArea.laine;
-		Main.panel.addToStatusArea('laine', this.button);
+		Main.panel.addToStatusArea('laine', this.button,
+			this._settings.get_boolean(this._key_ICON_POSITION) ?
+			Main.panel._rightBox.get_children().length -1 : 0);
+		this._sigPanelListen = Main.panel._rightBox.connect('actor-added',
+			Lang.bind(this, function(){
+				if(!this._settings.get_boolean(this._key_ICON_POSITION)) return;
+				let container = this.button.actor.get_parent();
+				let rb = Main.panel._rightBox;
+
+				if(container == rb.get_children()[rb.get_children().length -2]) return;
+				rb.remove_actor(container);
+				rb.insert_child_at_index(container, rb.get_children().length -1);
+			}
+		));
 
 		return true;
 	},
@@ -336,6 +353,14 @@ const Laine = new Lang.Class({
 		enable();
 	},
 
+	_switchEnforceIconPosition: function(){
+		let container = this.button.actor.get_parent();
+		Main.panel._rightBox.remove_actor(container);
+		Main.panel._rightBox.insert_child_at_index(container,
+			this._settings.get_boolean(this._key_ICON_POSITION) ?
+			Main.panel._rightBox.get_children().length -1 : 0);
+	},
+
 	destroy: function(){
 		if(this.button)
 			this.button.destroy();
@@ -348,6 +373,8 @@ const Laine = new Lang.Class({
 
 		this._settings.disconnect(this._sigMerge);
 		this._sigMerge = null;
+		Main.panel._rightBox.disconnect(this._sigPanelListen);
+		this._sigPanelListen = null;
 	}
 
 });
@@ -360,8 +387,11 @@ function init(){
 }
 
 function enable(){
-	if(typeof Main.panel.statusArea.laine === "undefined")
+	global.log('loading laine');
+	if(typeof Main.panel.statusArea.laine === "undefined"){
+		_menuButton = null;
 		_menuButton = new Laine();
+	}
 }
 
 function disable(){
