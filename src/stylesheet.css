@@ -42,8 +42,9 @@
 	padding-top:10px;
 }
 
+.simple-stream-icon,
 .stream_container .icon {
-	icon-size:1.8em;
+	icon-size:1.5em;
 	padding-left:6px;
 	padding-right:12px;
 }

@@ -371,7 +371,7 @@ const SimpleStream = new Lang.Class({
 			name = sInfo['application.name'];
 			let iname;
 			if('application.icon_name' in sInfo) iname = sInfo['application.icon_name'];
-			else iname = 'package_multimedia';
+			else iname = 'applications-multimedia-symbolic';//'package_multimedia';
 			icon = new St.Icon({icon_name: iname, style_class: 'simple-stream-icon'});
 		}
 
