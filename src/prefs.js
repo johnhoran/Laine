@@ -1,7 +1,6 @@
 const Lang = imports.lang;
 const Gtk = imports.gi.Gtk;
 const GObject = imports.gi.GObject;
-const GLib = imports.gi.GLib;
 
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;

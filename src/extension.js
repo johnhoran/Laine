@@ -409,7 +409,6 @@ const Laine = new Lang.Class({
 		}
 
 		this._settings.disconnect(this._sigMerge);
-		this._settings.disconnect(this._sigSettings);
 		this._sigMerge = null;
 		Main.panel._rightBox.disconnect(this._sigPanelListen);
 		this._sigPanelListen = null;
