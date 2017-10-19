@@ -12,6 +12,7 @@ const KEY_PA_OVER = "volume-overdrive";
 const KEY_PORT_LABEL = "show-port-label";
 const KEY_MERGE_CONTROLS = "merge-controls";
 const KEY_OPEN_SETTINGS = "open-settings";
+const KEY_ICON_POSITION = "icon-position";
 
 function init(){
 	Convenience.initTranslations();
@@ -51,12 +52,19 @@ const LainePrefsWidget = new GObject.Class({
 			halign: Gtk.Align.END
 		});
 
+		let lbl_iconRightPosition = new Gtk.Label({
+			label: _("Insert icon next to aggregate menu"),
+			halign: Gtk.Align.END
+		});
+
 		this.attach(lbl_volumeOverdrive, 0, 0, 1, 1);
 		this.attach_next_to(lbl_showPortLabel, lbl_volumeOverdrive,
 			Gtk.PositionType.BOTTOM, 1, 1);
 		this.attach_next_to(lbl_mergeAggregate, lbl_showPortLabel,
 			Gtk.PositionType.BOTTOM, 1, 1);
-		this.attach_next_to(lbl_openSettings, lbl_mergeAggregate,
+		this.attach_next_to(lbl_iconRightPosition, lbl_mergeAggregate,
+			Gtk.PositionType.BOTTOM, 1, 1);
+		this.attach_next_to(lbl_openSettings, lbl_iconRightPosition,
 			Gtk.PositionType.BOTTOM, 1, 1);
 		this.attach_next_to(lbl_appSettings, lbl_openSettings,
 			Gtk.PositionType.BOTTOM, 1, 1);
@@ -68,30 +76,20 @@ const LainePrefsWidget = new GObject.Class({
 		let volumeOverdrive = Gtk.Scale.new_with_range(
 			Gtk.Orientation.HORIZONTAL, 80, 150, 5);
 		volumeOverdrive.set_value(this._settings.get_int(KEY_PA_OVER));
-		volumeOverdrive.connect('value-changed', Lang.bind(this,
-			function(src){ this._settings.set_int(KEY_PA_OVER, src.get_value()); }
-		));
 
 		this._showLabelSwitch = new Gtk.Switch({
 			active: this._settings.get_boolean(KEY_PORT_LABEL)
 		});
-        this._showLabelSwitch.connect('notify::active', Lang.bind(this,
-                function(src){ this._settings.set_boolean(KEY_PORT_LABEL, src.active); }
-        ));
-
 		this._mergeAggregateSwitch = new Gtk.Switch({
 			active: this._settings.get_boolean(KEY_MERGE_CONTROLS)
 		});
-		this._mergeAggregateSwitch.connect('notify::active', Lang.bind(this,
-			function(src){this._settings.set_boolean(KEY_MERGE_CONTROLS, src.active);}
-		));
-
+		this._iconRightPositionSwitch = new Gtk.Switch({
+			active: this._settings.get_boolean(KEY_ICON_POSITION),
+			sensitive: !this._settings.get_boolean(KEY_MERGE_CONTROLS)
+		});
 		this._openSettingsSwitch = new Gtk.Switch({
 			active: this._settings.get_boolean(KEY_OPEN_SETTINGS)
 		});
-		this._openSettingsSwitch.connect('notify::active', Lang.bind(this,
-			function(src){this._settings.set_boolean(KEY_OPEN_SETTINGS, src.active);}
-		));
 
         //this._appSettingsChooser = new Gtk.AppChooserWidget({ show_all: true });
         //this._appSettingsChooser.connect('application-selected', function(entry) {
@@ -111,11 +109,35 @@ const LainePrefsWidget = new GObject.Class({
         });
 
 
+		volumeOverdrive.connect('value-changed', Lang.bind(this,
+			function(src){ this._settings.set_int(KEY_PA_OVER, src.get_value()); }
+		));
+		this._showLabelSwitch.connect('notify::active', Lang.bind(this,
+			function(src){ this._settings.set_boolean(KEY_PORT_LABEL, src.active); }
+        ));
+        this._mergeAggregateSwitch.connect('notify::active', Lang.bind(this,
+			function(src){this._settings.set_boolean(KEY_MERGE_CONTROLS, src.active);}
+		));
+		this._mergeAggregateSwitch.connect('notify::active', Lang.bind(this,
+			function(src, a, b){
+				this._iconRightPositionSwitch
+					.set_sensitive(! this._mergeAggregateSwitch.get_active()); }
+		));
+		this._iconRightPositionSwitch.connect('notify::active', Lang.bind(this,
+			function(src){this._settings.set_boolean(KEY_ICON_POSITION, src.active);}
+		));
+		this._openSettingsSwitch.connect('notify::active', Lang.bind(this,
+			function(src){this._settings.set_boolean(KEY_OPEN_SETTINGS, src.active);}
+		));
+
+
 		this.attach_next_to(volumeOverdrive, lbl_volumeOverdrive,
 			Gtk.PositionType.RIGHT, 2, 1);
 		this.attach_next_to(this._showLabelSwitch, lbl_showPortLabel,
 			Gtk.PositionType.RIGHT, 1, 1);
 		this.attach_next_to(this._mergeAggregateSwitch, lbl_mergeAggregate,
+			Gtk.PositionType.RIGHT, 1, 1);
+		this.attach_next_to(this._iconRightPositionSwitch, lbl_iconRightPosition,
 			Gtk.PositionType.RIGHT, 1, 1);
 		this.attach_next_to(this._openSettingsSwitch, lbl_openSettings,
 			Gtk.PositionType.RIGHT, 1, 1);

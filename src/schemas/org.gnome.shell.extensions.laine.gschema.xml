@@ -37,5 +37,15 @@
 				The application to configura pulseaudio to open, default to pavucontrol.
 			</description>
 		</key>
+		<key type="b" name="icon-position">
+			<default>false</default>
+			<summary>Controls where the icon is inserted</summary>
+			<description>
+				The icon is inserted next to the aggregate menu, regardless of when it is loaded.
+				This is kinda agressive, if another extension tries to load an icon in the same position,
+				then this listens for that and moves its icon closer again.  But if another extension has
+				the same idea, then it becomes a recursive loop...
+			</description>
+		</key>
 	</schema>
 </schemalist>

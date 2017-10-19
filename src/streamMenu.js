@@ -408,8 +408,6 @@ const SimpleStream = new Lang.Class({
 
         return Clutter.EVENT_PROPAGATE;
     }
-
-
 });
 
 const MPRISControl = new Lang.Class({
