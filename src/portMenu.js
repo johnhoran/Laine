@@ -152,7 +152,7 @@ const PortMenu = new Lang.Class({
                 })
             );
             return false; // Don't repeat
-        }), null);
+        }));
     },
 
     _initFallbackDevice: function(paConn, type) {
@@ -500,14 +500,14 @@ const Device = new Lang.Class({
 
     setActiveDevice: function(){
         this._sigVol = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'VolumeUpdated',
-            this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
+            this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged));
         this._asyncDBusGetProperty('Volume', Lang.bind(this, function(conn, query){
             let volV = conn.call_finish(query).get_child_value(0).unpack();
             this.setVolume(volV);
         }));
 
         this._sigMute = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'MuteUpdated',
-            this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged), null );
+            this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onVolumeChanged));
         this._asyncDBusGetProperty('Mute', Lang.bind(this, function(conn, query){
             let muteV = conn.call_finish(query).get_child_value(0).unpack();
             this.setVolume(muteV);
@@ -515,7 +515,7 @@ const Device = new Lang.Class({
 
         if (this._numPorts > 0) {
             this._sigPort = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Device', 'ActivePortUpdated',
-                this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onPortChanged), null );
+                this._path, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onPortChanged));
             this._asyncDBusGetProperty('ActivePort', Lang.bind(this, function(conn, query){
                 let response = conn.call_finish(query).get_child_value(0).unpack();
                 let port = response.get_string()[0];

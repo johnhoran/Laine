@@ -48,9 +48,9 @@ const StreamMenu = new Lang.Class({
 
         //Add signal handlers
         this._sigNewStr = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewPlaybackStream',
-            '/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onAddStream), null );
+            '/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onAddStream));
         this._sigRemStr = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'PlaybackStreamRemoved',
-            '/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onRemoveStream), null );
+            '/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onRemoveStream));
 
         this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
     },
@@ -242,11 +242,11 @@ const StreamBase = new Lang.Class({
         this._sigVol = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Stream', 'VolumeUpdated',
             this._paPath, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, function(conn, sender, object, iface, signal, param, user_data){
                 this.setVolume(param.get_child_value(0));
-            }), null );
+            }));
         this._sigMute = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1.Stream', 'MuteUpdated',
             this._paPath, null, Gio.DBusSignalFlags.NONE, Lang.bind(this, function(conn, sender, object, iface, signal, param, user_data){
                 this.setVolume(param.get_child_value(0));
-            }), null );
+            }));
     },
 
     setVolume: function(volume){
@@ -657,10 +657,10 @@ const MPRISStream = new Lang.Class({
         //Signal handlers
         this._sigPropChange = this._dbus.signal_subscribe(this._path, 'org.freedesktop.DBus.Properties',
             'PropertiesChanged', '/org/mpris/MediaPlayer2', null, Gio.DBusSignalFlags.NONE,
-            Lang.bind(this, this._onPropChange), null);
+            Lang.bind(this, this._onPropChange));
         this._sigSeeked = this._dbus.signal_subscribe(this._path, 'org.mpris.MediaPlayer2.Player',
             'Seeked', '/org/mpris/MediaPlayer2', null, Gio.DBusSignalFlags.NONE,
-            Lang.bind(this, this._onPropChange), null);
+            Lang.bind(this, this._onPropChange));
 
         this._posSlider.connect('value-changed', Lang.bind(this, this._onPosSliderChange));
 

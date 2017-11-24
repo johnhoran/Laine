@@ -35,9 +35,9 @@ const SourceMenu = new Lang.Class({
 		this._updateVisibility();
 
 		this._sigNewStr = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'NewRecordStream',
-			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onAddStream), null );
+			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onAddStream));
 		this._sigRemStr = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'RecordStreamRemoved',
-			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onRemoveStream), null );
+			'/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onRemoveStream));
 
 		this.connect('fallback-updated', Lang.bind(this, this._onSetDefaultSource));
 		this.actor.connect('destroy', Lang.bind(this, this._onSubDestroy));
