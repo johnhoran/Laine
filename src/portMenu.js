@@ -83,13 +83,13 @@ const PortMenu = new Lang.Class({
 
 
         this._sigFallback = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'Fallback'+type+'Updated',
-            '/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onDevChange), null );
+            '/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onDevChange));
         this._sigFallbackUnset = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'Fallback'+type+'Unset',
-            '/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onDevChange), null );
+            '/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onDevChange));
         this._sigNewDevice = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', 'New'+type,
-            '/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onDevChange), null );
+            '/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onDevChange));
         this._sigRemovedDevice = this._paDBus.signal_subscribe(null, 'org.PulseAudio.Core1', type+'Removed',
-            '/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onDevChange), null );
+            '/org/pulseaudio/core1', null, Gio.DBusSignalFlags.NONE, Lang.bind(this, this._onDevChange));
 
         this.actor.connect('scroll-event', Lang.bind(this, this.scroll));
         this.actor.connect('destroy', Lang.bind(this, this._onDestroy));
