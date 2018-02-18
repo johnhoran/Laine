@@ -361,7 +361,9 @@ const SimpleStream = new Lang.Class({
             let info = this._app.get_app_info();
             if(info != null){
                 name = info.get_name();
-                icon = new St.Icon({style_class: 'icon'});
+                icon = new St.Icon({
+                	fallback_icon_name: 'applications-multimedia-symbolic',
+                	style_class: 'icon'});
                 icon.set_gicon(info.get_icon());
             }
             this._label.add_style_pseudo_class('clickable');
@@ -371,8 +373,12 @@ const SimpleStream = new Lang.Class({
             name = sInfo['application.name'];
             let iname;
             if('application.icon_name' in sInfo) iname = sInfo['application.icon_name'];
-            else iname = 'package_multimedia';
-            icon = new St.Icon({icon_name: iname, style_class: 'simple-stream-icon'});
+            else iname = 'applications-multimedia-symbolic';
+            icon = new St.Icon({
+            	fallback_icon_name: 'applications-multimedia-symbolic',
+            	icon_name: iname,
+            	style_class: 'simple-stream-icon'
+            });
         }
 
         this._muteBtn.child = icon;
@@ -714,19 +720,24 @@ const MPRISStream = new Lang.Class({
         let dName = res.get_string()[0];
         let icon;
         let app = Shell.AppSystem.get_default().lookup_app(dName+".desktop");
+        log('LAINE:717:'+dName);
         if(app != null){
             let info = app.get_app_info();
             this._label.text = info.get_name();
             icon = new St.Icon({style_class: 'icon'});
             icon.set_gicon(info.get_icon());
         } else {
-            icon = new St.Icon({icon_name: 'package_multimedia', style_class: 'simple-stream-icon'});
+            icon = new St.Icon({icon_name: 'applications-multimedia-symbolic', style_class: 'simple-stream-icon'});
             this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
                 GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2', 'Identity']), GLib.VariantType.new("(v)"),
                 Gio.DBusCallFlags.NONE, -1, null,
                 Lang.bind(this, function(conn, query){
-                    let res = conn.call_finish(query).get_child_value(0).get_string()[0];
-                    this.label.text = res;
+                    let res = (conn
+                    	.call_finish(query)
+                    	.get_child_value(0)
+                    	.unpack()
+                    	.get_string()[0]);
+                    this._label.text = res;
                 })
             );
         }
