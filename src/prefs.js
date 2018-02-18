@@ -1,6 +1,7 @@
 const Lang = imports.lang;
 const Gtk = imports.gi.Gtk;
 const GObject = imports.gi.GObject;
+const GLib = imports.gi.GLib;
 
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
@@ -90,22 +91,22 @@ const LainePrefsWidget = new GObject.Class({
 			active: this._settings.get_boolean(KEY_OPEN_SETTINGS)
 		});
 
-        //this._appSettingsChooser = new Gtk.AppChooserWidget({ show_all: true });
-        //this._appSettingsChooser.connect('application-selected', function(entry) {
-            //this._settings.set_string('app-settings', get_app_info());
-        //});
-        
-		this._appSettingsEntry =  new Gtk.Entry();
-        //this._appSettingsEntry.set_placeholder_text(_("PulseAudio configuration tool"));
-        this._appSettingsEntry.set_text(this._settings.get_string('app-settings'));
-        let completion =  new Gtk.EntryCompletion();
-        this._appSettingsEntry.set_completion(completion);
-        completion.set_model(this._getDesktopFilesList());
-        completion.set_text_column(0)
+		//this._appSettingsChooser = new Gtk.AppChooserWidget({ show_all: true });
+		//this._appSettingsChooser.connect('application-selected', function(entry) {
+		//this._settings.set_string('app-settings', get_app_info());
+		//});
 
-        this._appSettingsEntry.connect('notify::text', function(entry) {
-            this._settings.set_string('app-settings', entry.text.trim());
-        });
+		this._appSettingsEntry =  new Gtk.Entry();
+		//this._appSettingsEntry.set_placeholder_text(_("PulseAudio configuration tool"));
+		this._appSettingsEntry.set_text(this._settings.get_string('app-settings'));
+		let completion =  new Gtk.EntryCompletion();
+		this._appSettingsEntry.set_completion(completion);
+		completion.set_model(this._getDesktopFilesList());
+		completion.set_text_column(0)
+
+		this._appSettingsEntry.connect('notify::text', function(entry) {
+			this._settings.set_string('app-settings', entry.text.trim());
+		});
 
 
 		volumeOverdrive.connect('value-changed', Lang.bind(this,
@@ -113,8 +114,8 @@ const LainePrefsWidget = new GObject.Class({
 		));
 		this._showLabelSwitch.connect('notify::active', Lang.bind(this,
 			function(src){ this._settings.set_boolean(KEY_PORT_LABEL, src.active); }
-        ));
-        this._mergeAggregateSwitch.connect('notify::active', Lang.bind(this,
+		));
+		this._mergeAggregateSwitch.connect('notify::active', Lang.bind(this,
 			function(src){this._settings.set_boolean(KEY_MERGE_CONTROLS, src.active);}
 		));
 		this._mergeAggregateSwitch.connect('notify::active', Lang.bind(this,
@@ -153,21 +154,21 @@ const LainePrefsWidget = new GObject.Class({
 
 	},
 
-    _getDesktopFilesList: function() {
-        let sListStore = new Gtk.ListStore();
-        sListStore.set_column_types([GObject.TYPE_STRING]);
-        let [_, out, err, stat] = GLib.spawn_command_line_sync('sh -c "for app in /usr/share/applications/*.desktop ~/.local/share/applications/*.desktop; do app=\"${app##*/}\"; echo \"${app%.desktop}\"; done"');
-        
-        let sList = out.toString().split("\n");
-        sList = sList.sort(
-            function (a, b) {
-                return a.toLowerCase().localeCompare(b.toLowerCase());
-            })
-        for (let i in sList) {
-            sListStore.set(sListStore.append(), [0], [sList[i]]);
-        }
-        return sListStore;
-    }
+	_getDesktopFilesList: function() {
+		let sListStore = new Gtk.ListStore();
+		sListStore.set_column_types([GObject.TYPE_STRING]);
+		let [_, out, err, stat] = GLib.spawn_command_line_sync('sh -c "for app in /usr/share/applications/*.desktop ~/.local/share/applications/*.desktop; do app=\"${app##*/}\"; echo \"${app%.desktop}\"; done"');
+
+		let sList = out.toString().split("\n");
+		sList = sList.sort(
+			function (a, b) {
+			return a.toLowerCase().localeCompare(b.toLowerCase());
+		})
+		for (let i in sList) {
+			sListStore.set(sListStore.append(), [0], [sList[i]]);
+		}
+		return sListStore;
+	}
 });
 
 

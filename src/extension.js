@@ -113,7 +113,7 @@ const LaineCore = new Lang.Class({
 				let _appSys = Shell.AppSystem.get_default();
 				let _settingsApp = _appSys.lookup_app(_settingsAppName+'.desktop');
 
-				this._settingsMenu  = new PopupMenu.PopupMenuItem(_('PulseAudio Settings'));
+				this._settingsMenu = new PopupMenu.PopupMenuItem(_('PulseAudio Settings'));
 				if (_settingsApp != null) {
 					this._settingsMenu.connect('activate', function () {
 						_settingsApp.activate();

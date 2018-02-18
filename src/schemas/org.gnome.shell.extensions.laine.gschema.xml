@@ -24,7 +24,7 @@
 			</description>
 		</key>
 		<key type="b" name="open-settings">
-			<default>true</default>
+			<default>false</default>
 			<summary>Menu entry for configuration tool</summary>
 			<description>
 				Add a menu entry to open a configuration tool for pulseaudio, like pavucontrol
