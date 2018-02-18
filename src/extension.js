@@ -136,7 +136,10 @@ const LaineCore = new Lang.Class({
 			var appName = this._settings.get_string('app-settings');
 			var sys = Shell.AppSystem.get_default();
 			let app = sys.lookup_app(appName+'.desktop');
-			app.activate();
+			if(app != null)
+				app.activate();
+			else
+				Main.notify(_('Couldn\'t load')+' '+ appName +'.');
 			this._getTopMenu()._container.menu.close()
 
 		});
@@ -149,7 +152,7 @@ const LaineCore = new Lang.Class({
 				this._settings.disconnect(this._sigShow);
 				delete this._sigShow;
 			}
-		});
+		}));
 
 		m._setVisible();
 		return m

@@ -43,3 +43,6 @@ reload_theme:
 #not sure what happens if called from wayland though...
 restart:
 	gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval 'Meta.restart(_("Restarting"));'
+
+pot:
+	xgettext -k_ -kN_ -o po/messages.pot src/*.js

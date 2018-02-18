@@ -102,11 +102,13 @@ const LainePrefsWidget = new GObject.Class({
 		let completion =  new Gtk.EntryCompletion();
 		this._appSettingsEntry.set_completion(completion);
 		completion.set_model(this._getDesktopFilesList());
-		completion.set_text_column(0)
+		completion.set_text_column(0);
 
-		this._appSettingsEntry.connect('notify::text', function(entry) {
-			this._settings.set_string('app-settings', entry.text.trim());
-		});
+		this._appSettingsEntry.connect('notify::text', Lang.bind(this,
+			function(entry) {
+				this._settings.set_string('app-settings', entry.text.trim());
+			}
+		));
 
 
 		volumeOverdrive.connect('value-changed', Lang.bind(this,
