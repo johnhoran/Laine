@@ -35,8 +35,8 @@ function connectToPADBus(callback){
 								f_connectToPABus(paAddr, callback, true);
 							}));
 						} else {
-							log('Laine: Cannot connect to pulseaudio over dbus');
-							log(e);
+							log('Laine: Cannot connect to pulseaudio over dbus\n' + e.message
+								+ '@' + e.fileName + '::' + e.lineNumber );
 						}
 					}
 				}
@@ -59,7 +59,6 @@ function connectToPADBus(callback){
 		);
 	};
 
-
 	let dbus = Gio.DBus.session;
 	dbus.call('org.PulseAudio1', '/org/pulseaudio/server_lookup1',
 		"org.freedesktop.DBus.Properties",
@@ -81,7 +80,9 @@ const LaineCore = new Lang.Class({
 
 	_init: function(container){
 		this.parent();
-		this._icon = new St.Icon({ icon_name: 'system-run-symbolic', style_class: 'system-status-icon' });
+		this._icon = new St.Icon({
+			icon_name: 'system-run-symbolic',
+			style_class: 'system-status-icon' });
  		let build_cb = function(conn, manual){
 			this._paDBus = conn;
 			this._moduleLoad = manual;
@@ -90,42 +91,23 @@ const LaineCore = new Lang.Class({
 			this._sourceMenu = new SourceMenu.SourceMenu(this, this._paDBus);
 			this._streamMenu = new StreamMenu.StreamMenu(this, this._paDBus);
 
-			this._sinkMenu.connect('icon-changed', Lang.bind(this, this._onUpdateIcon));
-			this._sinkMenu.connect('fallback-updated', Lang.bind(this._streamMenu, this._streamMenu._onSetDefaultSink));
-			this._sourceMenu.connect('fallback-updated', Lang.bind(this._sourceMenu, this._sourceMenu._onSetDefaultSource));
+			this._sinkMenu.connect('icon-changed',
+				Lang.bind(this, this._onUpdateIcon));
+			this._sinkMenu.connect('fallback-updated',
+				Lang.bind(this._streamMenu, this._streamMenu._onSetDefaultSink));
+			this._sourceMenu.connect('fallback-updated', Lang.bind(this._sourceMenu,
+				this._sourceMenu._onSetDefaultSource));
 
 			this._setIndicatorIcon(this._sinkMenu._slider.value);
 			this._addPulseAudioListeners();
 
 			this.addMenuItem(this._sinkMenu);
 			this.addMenuItem(this._sourceMenu);
+
+			this.addMenuItem(this._buildSettingsMenu());
+
 			this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 			this.addMenuItem(this._streamMenu);
-
-			let _settings = Convenience.getSettings();
-			let boolSettings=_settings.get_boolean('open-settings')
-			if (boolSettings) {
-				//this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-				// TO DO allow to change application name in preferences
-				let _settingsAppName = _settings.get_string('app-settings');
-				//let _settingsAppName = 'pavucontrol';
-
-				let _appSys = Shell.AppSystem.get_default();
-				let _settingsApp = _appSys.lookup_app(_settingsAppName+'.desktop');
-
-				this._settingsMenu = new PopupMenu.PopupMenuItem(_('PulseAudio Settings'));
-				if (_settingsApp != null) {
-					this._settingsMenu.connect('activate', function () {
-						_settingsApp.activate();
-						if(Main.panel.statusArea.laine) {
-							Main.panel.statusArea.laine.menu.close();
-						}
-					});
-				} else {
-					this._settingsMenu.setActive(false);
-				}
-				this.addMenuItem(this._settingsMenu);
-			}
 
 			container.layout();
 		};
@@ -136,6 +118,42 @@ const LaineCore = new Lang.Class({
 		catch(e){
 			log("EXCEPTION:Laine "+e);
 		}
+	},
+
+	_buildSettingsMenu: function(){
+		var m = new PopupMenu.PopupMenuItem(_('PulseAudio Settings'));
+		m._key_VISIBLE = Me.imports.prefs.KEY_OPEN_SETTINGS;
+		m._settings = Convenience.getSettings();
+
+		m._setVisible = Lang.bind(m, function(){
+			if(this._settings.get_boolean(this._key_VISIBLE))
+				this.actor.show();
+			else
+				this.actor.hide();
+		});
+
+		m._onClick = Lang.bind(m, function(){
+			var appName = this._settings.get_string('app-settings');
+			var sys = Shell.AppSystem.get_default();
+			let app = sys.lookup_app(appName+'.desktop');
+			app.activate();
+			this._getTopMenu()._container.menu.close()
+
+		});
+
+		m._sigShow = m._settings.connect('changed::'+m._key_VISIBLE, m._setVisible);
+		m._sigClick = m.connect('activate', m._onClick);
+
+		m.actor.connect('destroy', Lang.bind(m, function(){
+			if(this._sigShow){
+				this._settings.disconnect(this._sigShow);
+				delete this._sigShow;
+			}
+		});
+
+		m._setVisible();
+		return m
+
 	},
 
 	_addPulseAudioListeners: function(){
@@ -341,6 +359,7 @@ const Laine = new Lang.Class({
 		this.button.actor.add_child(hbox);
 		this.button.menu.addMenuItem(this.laineCore);
 		this.button.menu.actor.add_style_class_name('solitary');
+		this.laineCore._container = this.button;
 
 		this.button.actor.connect('destroy',
 			Lang.bind(this.laineCore, this.laineCore._onDestroy)
@@ -376,6 +395,7 @@ const Laine = new Lang.Class({
 			Main.panel.statusArea.aggregateMenu._volume._primaryIndicator.get_parent()
 		);
 		Main.panel.statusArea.aggregateMenu._laine = this.laineCore;
+		this.laineCore._container = Main.panel.statusArea.aggregateMenu;
 
 		this._sigScroll = Main.panel.statusArea.aggregateMenu.actor.connect(
 			'scroll-event',

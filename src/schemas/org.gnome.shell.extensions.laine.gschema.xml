@@ -34,7 +34,7 @@
 			<default>'pavucontrol'</default>
 			<summary>Configuration tool to open</summary>
 			<description>
-				The application to configura pulseaudio to open, default to pavucontrol.
+				The application to configure pulseaudio to open, default to pavucontrol.
 			</description>
 		</key>
 		<key type="b" name="icon-position">
