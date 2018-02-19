@@ -59,19 +59,28 @@ function connectToPADBus(callback){
 		);
 	};
 
-	let dbus = Gio.DBus.session;
-	dbus.call('org.PulseAudio1', '/org/pulseaudio/server_lookup1',
-		"org.freedesktop.DBus.Properties",
-		"Get", GLib.Variant.new('(ss)', ['org.PulseAudio.ServerLookup1', 'Address']),
-		GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this,
-			function(conn, query){
-				let resp = conn.call_finish(query).get_child_value(0).unpack();
-				let paAddr = resp.get_string()[0];
+	let paAddr = ('unix:path='
+		+ GLib.getenv('XDG_RUNTIME_DIR')
+		+ '/pulse/dbus-socket');
+	//Check socket existance
+	if(Gio.file_new_for_path(paAddr.slice(10)).query_exists(null)){
+		f_connectToPABus(paAddr, callback, false);
+	}
+	else{
+		let dbus = Gio.DBus.session;
+		dbus.call('org.PulseAudio1', '/org/pulseaudio/server_lookup1',
+			"org.freedesktop.DBus.Properties",
+			"Get", GLib.Variant.new('(ss)', ['org.PulseAudio.ServerLookup1', 'Address']),
+			GLib.VariantType.new("(v)"), Gio.DBusCallFlags.NONE, -1, null, Lang.bind(this,
+				function(conn, query){
+					let resp = conn.call_finish(query).get_child_value(0).unpack();
+					let paAddr = resp.get_string()[0];
 
-				f_connectToPABus(paAddr, callback, false);
-			}
-		)
-	);
+					f_connectToPABus(paAddr, callback, false);
+				}
+			)
+		);
+	}
 }
 
 const LaineCore = new Lang.Class({
