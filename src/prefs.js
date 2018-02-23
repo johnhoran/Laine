@@ -8,17 +8,17 @@ const Convenience = Me.imports.convenience;
 const Gettext = imports.gettext.domain(Me.metadata['gettext-domain']);
 const _ = Gettext.gettext;
 
-const KEY_PA_OVER = "volume-overdrive";
-const KEY_PORT_LABEL = "show-port-label";
-const KEY_MERGE_CONTROLS = "merge-controls";
-const KEY_OPEN_SETTINGS = "open-settings";
-const KEY_ICON_POSITION = "icon-position";
+var KEY_PA_OVER = "volume-overdrive";
+var KEY_PORT_LABEL = "show-port-label";
+var KEY_MERGE_CONTROLS = "merge-controls";
+var KEY_OPEN_SETTINGS = "open-settings";
+var KEY_ICON_POSITION = "icon-position";
 
 function init(){
 	Convenience.initTranslations();
 }
 
-const LainePrefsWidget = new GObject.Class({
+var LainePrefsWidget = new GObject.Class({
 	Name: "Laine.Prefs.Widget",
 	GTypeName: "LainePrefsWidget",
 	Extends: Gtk.Grid,

@@ -27,7 +27,7 @@ const WATCH_RULE = "type='signal'," +
         "path='/org/freedesktop/DBus'," +
         "arg0namespace='org.mpris.MediaPlayer2'";
 
-const StreamMenu = new Lang.Class({
+var StreamMenu = new Lang.Class({
     Name: 'StreamMenu',
     Extends: PopupMenu.PopupMenuSection,
 

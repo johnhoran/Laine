@@ -26,7 +26,7 @@ const UPDATE_FALLBACK_SINK_CMD = "/usr/bin/sh -c  \"/usr/bin/pacmd set-default-s
 const UPDATE_FALLBACK_SOURCE_CMD = "/usr/bin/sh -c  \"/usr/bin/pacmd set-default-source $(/usr/bin/pacmd list-sources | awk '/* index:/ {print $3}')\"";
 const UPDATE_FALLBACK_CMD = {'Sink': UPDATE_FALLBACK_SINK_CMD, 'Source': UPDATE_FALLBACK_SOURCE_CMD};
 
-const PortMenu = new Lang.Class({
+var PortMenu = new Lang.Class({
     Name: 'PortMenu',
     Extends: PopupMenu.PopupSubMenuMenuItem,
     Abstract: true,

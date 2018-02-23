@@ -13,7 +13,7 @@ const Signals = imports.signals;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const PortMenu = Me.imports.portMenu;
 
-const SourceMenu = new Lang.Class({
+var SourceMenu = new Lang.Class({
 	Name: 'SourceMenu',
 	Extends: PortMenu.PortMenu,
 
