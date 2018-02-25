@@ -332,7 +332,6 @@ const StreamBase = new Lang.Class({
     },
 
     _raise: function(){}
-
 });
 
 const SimpleStream = new Lang.Class({
@@ -356,19 +355,49 @@ const SimpleStream = new Lang.Class({
                     this._app = trayNotifications[i].app;
         }
 
-        let icon, name= null;
+        let icon, name = null;
         if(this._app != null){
             let info = this._app.get_app_info();
             if(info != null){
-                name = info.get_name();
-                icon = new St.Icon({
-                	fallback_icon_name: 'applications-multimedia-symbolic',
-                	style_class: 'icon'});
-                icon.set_gicon(info.get_icon());
+            	name = info.get_name();
+        			let _icon = info.get_icon();
+        			if(_icon != null)
+        				icon = new St.Icon({
+        					gicon: _icon,
+        					fallback_icon_name: 'applications-multimedia-symbolic',
+        					style_class: 'icon'
+        				});
             }
+
+            if(name == null)
+            	name = this._app.get_name();
+
+          	if(icon == null){
+          		let icon_texture = this._app.create_icon_texture(32);
+          		if(icon_texture instanceof Clutter.Texture){
+          			icon = new St.Bin({
+          				child: icon_texture,
+          				style_class: 'icon'
+          			});
+          		}
+          	}
             this._label.add_style_pseudo_class('clickable');
         }
 
+				if(icon == null){
+					icon = new St.Icon({
+						style_class:'icon',
+      			fallback_icon_name: 'applications-multimedia-symbolic',
+					});
+
+					if('application.icon_name' in sInfo)
+						icon.icon_name = sInfo['application.icon_name'];
+				}
+
+				if(name == null)
+					name = sInfo['application.name'];
+
+/*
         if(name == null){
             name = sInfo['application.name'];
             let iname;
@@ -380,7 +409,7 @@ const SimpleStream = new Lang.Class({
             	style_class: 'simple-stream-icon'
             });
         }
-
+*/
         this._muteBtn.child = icon;
         this._label.text = name;
 
@@ -720,7 +749,7 @@ const MPRISStream = new Lang.Class({
         let dName = res.get_string()[0];
         let icon;
         let app = Shell.AppSystem.get_default().lookup_app(dName+".desktop");
-        log('LAINE:717:'+dName);
+
         if(app != null){
             let info = app.get_app_info();
             this._label.text = info.get_name();
@@ -729,8 +758,8 @@ const MPRISStream = new Lang.Class({
         } else {
             icon = new St.Icon({icon_name: 'applications-multimedia-symbolic', style_class: 'simple-stream-icon'});
             this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
-                GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2', 'Identity']), GLib.VariantType.new("(v)"),
-                Gio.DBusCallFlags.NONE, -1, null,
+								GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2', 'Identity']), GLib.VariantType.new("(v)"),
+								Gio.DBusCallFlags.NONE, -1, null,
                 Lang.bind(this, function(conn, query){
                     let res = (conn
                     	.call_finish(query)

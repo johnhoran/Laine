@@ -44,6 +44,8 @@
 
 .simple-stream-icon,
 .stream_container .icon {
+	width:2em;
+	height:2em;
 	icon-size:1.5em;
 	padding-left:6px;
 	padding-right:12px;
