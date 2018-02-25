@@ -175,7 +175,7 @@ var StreamMenu = new Lang.Class({
 });
 
 
-const StreamBase = new Lang.Class({
+var StreamBase = new Lang.Class({
     Name: 'StreamBase',
     Extends: PopupMenu.PopupMenuSection,
     Abstract: true,
@@ -334,7 +334,7 @@ const StreamBase = new Lang.Class({
     _raise: function(){}
 });
 
-const SimpleStream = new Lang.Class({
+var SimpleStream = new Lang.Class({
     Name: 'SimpleStream',
     Extends: StreamBase,
 
@@ -359,57 +359,44 @@ const SimpleStream = new Lang.Class({
         if(this._app != null){
             let info = this._app.get_app_info();
             if(info != null){
-            	name = info.get_name();
-        			let _icon = info.get_icon();
-        			if(_icon != null)
-        				icon = new St.Icon({
-        					gicon: _icon,
-        					fallback_icon_name: 'applications-multimedia-symbolic',
-        					style_class: 'icon'
-        				});
+                name = info.get_name();
+                let _icon = info.get_icon();
+                if(_icon != null)
+                    icon = new St.Icon({
+                        gicon: _icon,
+                        fallback_icon_name: 'applications-multimedia-symbolic',
+                        style_class: 'icon'
+                    });
             }
 
             if(name == null)
-            	name = this._app.get_name();
+                name = this._app.get_name();
 
-          	if(icon == null){
-          		let icon_texture = this._app.create_icon_texture(32);
-          		if(icon_texture instanceof Clutter.Texture){
-          			icon = new St.Bin({
-          				child: icon_texture,
-          				style_class: 'icon'
-          			});
-          		}
-          	}
+            if(icon == null){
+                let icon_texture = this._app.create_icon_texture(32);
+                if(icon_texture instanceof Clutter.Texture){
+                    icon = new St.Bin({
+                        child: icon_texture,
+                        style_class: 'icon'
+                    });
+                }
+            }
             this._label.add_style_pseudo_class('clickable');
         }
 
-				if(icon == null){
-					icon = new St.Icon({
-						style_class:'icon',
-      			fallback_icon_name: 'applications-multimedia-symbolic',
-					});
-
-					if('application.icon_name' in sInfo)
-						icon.icon_name = sInfo['application.icon_name'];
-				}
-
-				if(name == null)
-					name = sInfo['application.name'];
-
-/*
-        if(name == null){
-            name = sInfo['application.name'];
-            let iname;
-            if('application.icon_name' in sInfo) iname = sInfo['application.icon_name'];
-            else iname = 'applications-multimedia-symbolic';
+        if(icon == null){
             icon = new St.Icon({
-            	fallback_icon_name: 'applications-multimedia-symbolic',
-            	icon_name: iname,
-            	style_class: 'simple-stream-icon'
+                style_class:'icon',
+        fallback_icon_name: 'applications-multimedia-symbolic',
             });
+
+            if('application.icon_name' in sInfo)
+                icon.icon_name = sInfo['application.icon_name'];
         }
-*/
+
+        if(name == null)
+            name = sInfo['application.name'];
+
         this._muteBtn.child = icon;
         this._label.text = name;
 
@@ -445,7 +432,7 @@ const SimpleStream = new Lang.Class({
     }
 });
 
-const MPRISControl = new Lang.Class({
+var MPRISControl = new Lang.Class({
     Name: 'MPRISControl',
 
     _init: function(parent, paconn){
@@ -579,7 +566,7 @@ const MPRISControl = new Lang.Class({
 
 });
 
-const MPRISStream = new Lang.Class({
+var MPRISStream = new Lang.Class({
     Name: 'MPRISStream',
     Extends: StreamBase,
 
@@ -758,14 +745,14 @@ const MPRISStream = new Lang.Class({
         } else {
             icon = new St.Icon({icon_name: 'applications-multimedia-symbolic', style_class: 'simple-stream-icon'});
             this._dbus.call(this._path, '/org/mpris/MediaPlayer2', "org.freedesktop.DBus.Properties", "Get",
-								GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2', 'Identity']), GLib.VariantType.new("(v)"),
-								Gio.DBusCallFlags.NONE, -1, null,
+                GLib.Variant.new('(ss)', ['org.mpris.MediaPlayer2', 'Identity']), GLib.VariantType.new("(v)"),
+                Gio.DBusCallFlags.NONE, -1, null,
                 Lang.bind(this, function(conn, query){
                     let res = (conn
-                    	.call_finish(query)
-                    	.get_child_value(0)
-                    	.unpack()
-                    	.get_string()[0]);
+                        .call_finish(query)
+                        .get_child_value(0)
+                        .unpack()
+                        .get_string()[0]);
                     this._label.text = res;
                 })
             );

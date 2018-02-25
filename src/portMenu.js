@@ -315,7 +315,7 @@ var PortMenu = new Lang.Class({
     },
 });
 
-const Port = new Lang.Class({
+var Port = new Lang.Class({
     Name: 'PulsePort',
     Extends: PopupMenu.PopupMenuItem,
 
@@ -378,7 +378,7 @@ const Port = new Lang.Class({
 
 });
 
-const VirtualPort = new Lang.Class({
+var VirtualPort = new Lang.Class({
     Name: 'PulseVirtualPort',
     Extends: PopupMenu.PopupMenuItem,
 
@@ -419,7 +419,7 @@ const VirtualPort = new Lang.Class({
 });
 
 
-const Device = new Lang.Class({
+var Device = new Lang.Class({
     Name: 'PulseDevice',
 
     _init: function(path, paconn, base){
