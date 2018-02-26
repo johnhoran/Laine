@@ -23,6 +23,20 @@
 				Show controls as part of aggregate menu instead of in seperate dropdown.
 			</description>
 		</key>
+		<key type="b" name="open-settings">
+			<default>false</default>
+			<summary>Menu entry for configuration tool</summary>
+			<description>
+				Add a menu entry to open a configuration tool for pulseaudio, like pavucontrol
+			</description>
+		</key>
+		<key type="s" name="app-settings">
+			<default>'pavucontrol'</default>
+			<summary>Configuration tool to open</summary>
+			<description>
+				The application to configure pulseaudio to open, default to pavucontrol.
+			</description>
+		</key>
 		<key type="b" name="icon-position">
 			<default>false</default>
 			<summary>Controls where the icon is inserted</summary>
